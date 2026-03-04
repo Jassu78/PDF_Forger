@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 
+      Block ALL network traffic. 
+      This app is 100% offline as per PDFForge System Design.
+    -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors/>
+    </base-config>
+</network-security-config>
