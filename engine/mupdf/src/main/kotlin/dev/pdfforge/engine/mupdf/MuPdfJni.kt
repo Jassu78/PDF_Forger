@@ -28,15 +28,12 @@ object MuPdfJni {
     external fun getPageCount(handle: Long): Int
 
     /**
-     * Checks if the document is encrypted/password-protected.
+     * Extracts text blocks from a specific page.
+     * @param docHandle The handle to the native document.
+     * @param pageNum The page number (0-indexed).
+     * @return A list of strings representing text blocks.
      */
-    external fun isEncrypted(handle: Long): Boolean
-
-    /**
-     * Authenticates a password-protected PDF.
-     * @return true if password is correct.
-     */
-    external fun authenticatePassword(handle: Long, password: String): Boolean
+    external fun extractTextBlocks(docHandle: Long, pageNum: Int): Array<String>
 
     /**
      * Creates a new empty PDF document.
@@ -61,6 +58,21 @@ object MuPdfJni {
      * @param destDocHandle The destination document handle.
      */
     external fun copyPage(srcDocHandle: Long, pageNum: Int, destDocHandle: Long): Boolean
+
+    /**
+     * Deletes a page from the document.
+     * @param docHandle The handle to the native document.
+     * @param pageNum The page number to delete (0-indexed).
+     */
+    external fun deletePage(docHandle: Long, pageNum: Int): Boolean
+
+    /**
+     * Rotates a page in the document.
+     * @param docHandle The handle to the native document.
+     * @param pageNum The page number to rotate (0-indexed).
+     * @param rotation Relative rotation in degrees (e.g., 90, 180, 270).
+     */
+    external fun rotatePage(docHandle: Long, pageNum: Int, rotation: Int): Boolean
 
     /**
      * Optimizes and compresses the document based on provided parameters.

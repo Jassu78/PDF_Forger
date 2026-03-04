@@ -1,9 +1,8 @@
-package dev.pdfforge.feature.compression
+package dev.pdfforge.feature.merge_split
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,8 +21,8 @@ import dev.pdfforge.common.ui.theme.PdfForgeTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompressionScreen(
-    viewModel: CompressionViewModel,
+fun SplitPdfScreen(
+    viewModel: SplitPdfViewModel,
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -35,7 +34,7 @@ fun CompressionScreen(
 
     if (uiState.isProcessing) {
         ProgressScreen(
-            title = "Optimizing PDF...",
+            title = "Splitting PDF...",
             statusText = uiState.statusText,
             progress = uiState.progress,
             onCancel = { viewModel.cancelOperation() }
@@ -45,7 +44,7 @@ fun CompressionScreen(
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text("Compress PDF", fontWeight = FontWeight.Bold) },
+                        title = { Text("Split PDF", fontWeight = FontWeight.Bold) },
                         navigationIcon = {
                             IconButton(onClick = onBackClick) {
                                 Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -100,110 +99,55 @@ fun CompressionScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(32.dp))
 
                     Text(
-                        "Compression Strategy",
+                        "Page Ranges:",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.padding(start = 4.dp)
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        "Format: 1-5, 8, 10-12",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.secondary
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Strategy List
-                    StrategyToggle(
-                        title = "Reduce Image Quality",
-                        checked = uiState.strategy.reduceImageQuality,
-                        color = Color(0xFF3FB950), // ForgeGreen
-                        onCheckedChange = { checked ->
-                            viewModel.updateStrategy { it.copy(reduceImageQuality = checked) }
-                        }
-                    )
-                    StrategyToggle(
-                        title = "Downscale Image",
-                        checked = uiState.strategy.downscaleImages,
-                        color = Color(0xFF39D353),
-                        onCheckedChange = { checked ->
-                            viewModel.updateStrategy { it.copy(downscaleImages = checked) }
-                        }
-                    )
-                    StrategyToggle(
-                        title = "Remove Metadata",
-                        checked = uiState.strategy.removeMetadata,
-                        color = Color(0xFF2EA043),
-                        onCheckedChange = { checked ->
-                            viewModel.updateStrategy { it.copy(removeMetadata = checked) }
-                        }
-                    )
-                    StrategyToggle(
-                        title = "Font Subsetting",
-                        checked = uiState.strategy.fontSubsetting,
-                        color = Color(0xFF238636),
-                        onCheckedChange = { checked ->
-                            viewModel.updateStrategy { it.copy(fontSubsetting = checked) }
-                        }
+                    OutlinedTextField(
+                        value = uiState.pageRanges,
+                        onValueChange = { viewModel.updatePageRanges(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("e.g. 1-10, 15") },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        )
                     )
 
                     Spacer(modifier = Modifier.weight(1f))
 
                     // Action Button
                     Button(
-                        onClick = { viewModel.compress() },
+                        onClick = { viewModel.splitPdf("Split_${uiState.selectedFile?.name}") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(64.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF3FB950) // ForgeGreen
+                            containerColor = Color(0xFF39D353) // ForgeCyan matching UI grid
                         ),
-                        enabled = uiState.selectedFile != null
+                        enabled = uiState.selectedFile != null && uiState.pageRanges.isNotEmpty()
                     ) {
                         Text(
-                            "Compress Now",
+                            "Extract Pages",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun StrategyToggle(
-    title: String,
-    checked: Boolean,
-    color: Color,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable { onCheckedChange(!checked) },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (checked) color.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant
-        ),
-        border = if (checked) androidx.compose.foundation.BorderStroke(1.dp, color) else null
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                colors = CheckboxDefaults.colors(checkedColor = color)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                title,
-                fontWeight = FontWeight.SemiBold,
-                color = if (checked) color else MaterialTheme.colorScheme.onSurface
-            )
         }
     }
 }

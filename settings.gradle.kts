@@ -26,11 +26,15 @@ include(":common:utils")
 // Data Modules
 include(":data:storage")
 include(":data:impl")
+include(":data:worker")
 
 // Engine Modules
 include(":engine:mupdf")
+include(":engine:converter")
 
 // Feature Modules
 include(":feature:home")
 include(":feature:pdf_creation")
 include(":feature:merge_split")
+include(":feature:compression")
+include(":feature:conversion")

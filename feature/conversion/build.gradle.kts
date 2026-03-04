@@ -1,12 +1,12 @@
 plugins {
-    id("com.android.library")
-    id("org.jetbrains.kotlin.android")
-    id("com.google.dagger.hilt.android")
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.hilt)
     id("kotlin-kapt")
 }
 
 android {
-    namespace = "dev.pdfforge.feature.home"
+    namespace = "dev.pdfforge.feature.conversion"
     compileSdk = 34
 
     defaultConfig {
@@ -31,6 +31,7 @@ dependencies {
     implementation(project(":domain:models"))
     implementation(project(":domain:core"))
     implementation(project(":common:ui"))
+    implementation(project(":common:utils"))
     
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
@@ -38,4 +39,5 @@ dependencies {
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
     implementation(libs.navigation.compose)
+    implementation(libs.poi.ooxml)
 }

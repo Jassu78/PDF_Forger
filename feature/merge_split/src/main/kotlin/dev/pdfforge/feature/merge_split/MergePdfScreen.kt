@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.pdfforge.common.ui.components.ProgressScreen
 import dev.pdfforge.common.ui.theme.PdfForgeTheme
 import dev.pdfforge.domain.models.PdfDocument
 
@@ -38,89 +39,94 @@ fun MergePdfScreen(
         viewModel.onFilesSelected(uris)
     }
 
-    PdfForgeTheme {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Merge PDFs", fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = onBackClick) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
-                    )
-                )
-            }
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp)
-                    .background(MaterialTheme.colorScheme.background)
-            ) {
-                // Add File Button
-                Button(
-                    onClick = { launcher.launch("application/pdf") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add PDF File", fontWeight = FontWeight.SemiBold)
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // PDF List
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    itemsIndexed(uiState.selectedFiles) { index, file ->
-                        PdfFileItem(
-                            file = file,
-                            onRemove = { viewModel.removeFile(file) }
+    if (uiState.isProcessing) {
+        ProgressScreen(
+            title = "Merging PDFs...",
+            statusText = uiState.statusText,
+            progress = uiState.progress,
+            onCancel = { viewModel.cancelOperation() }
+        )
+    } else {
+        PdfForgeTheme {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("Merge PDFs", fontWeight = FontWeight.Bold) },
+                        navigationIcon = {
+                            IconButton(onClick = onBackClick) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.background
                         )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                if (uiState.selectedFiles.isNotEmpty()) {
-                    Text(
-                        "Drag items to reorder",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.secondary
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
-
-                // Action Button
-                Button(
-                    onClick = { viewModel.mergeFiles("Merged_Document_${System.currentTimeMillis()}.pdf") },
+            ) { padding ->
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFF7B72) // ForgeRed matching UI
-                    ),
-                    enabled = uiState.selectedFiles.size >= 2 && !uiState.isProcessing
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(16.dp)
+                        .background(MaterialTheme.colorScheme.background)
                 ) {
-                    if (uiState.isProcessing) {
-                        CircularProgressIndicator(color = Color.White)
-                    } else {
+                    // Add File Button
+                    Button(
+                        onClick = { launcher.launch("application/pdf") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add PDF File", fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // PDF List
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        itemsIndexed(uiState.selectedFiles) { index, file ->
+                            PdfFileItem(
+                                file = file,
+                                onRemove = { viewModel.removeFile(file) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    if (uiState.selectedFiles.isNotEmpty()) {
+                        Text(
+                            "Drag items to reorder",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    // Action Button
+                    Button(
+                        onClick = { viewModel.mergeFiles("Merged_Document_${System.currentTimeMillis()}.pdf") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(64.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFFF7B72) // ForgeRed matching UI
+                        ),
+                        enabled = uiState.selectedFiles.size >= 2
+                    ) {
                         Text(
                             "Merge All",
                             fontSize = 20.sp,
@@ -138,7 +144,6 @@ fun PdfFileItem(
     file: PdfDocument,
     onRemove: () -> Unit
 ) {
-    // Generate colors based on index or just use variants
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),

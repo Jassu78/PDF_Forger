@@ -3,22 +3,15 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.google.dagger.hilt.android")
     id("kotlin-kapt")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
-    namespace = "dev.pdfforge.feature.home"
+    namespace = "dev.pdfforge.data.worker"
     compileSdk = 34
 
     defaultConfig {
         minSdk = 29
-    }
-
-    buildFeatures {
-        compose = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
     }
 
     compileOptions {
@@ -30,12 +23,12 @@ android {
 dependencies {
     implementation(project(":domain:models"))
     implementation(project(":domain:core"))
-    implementation(project(":common:ui"))
+    implementation(project(":data:storage"))
     
-    implementation(platform(libs.compose.bom))
-    implementation(libs.compose.ui)
-    implementation(libs.compose.material3)
+    implementation(libs.workmanager-ktx)
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
-    implementation(libs.navigation.compose)
+    implementation("androidx.hilt:hilt-work:1.1.0")
+    kapt("androidx.hilt:hilt-compiler:1.1.0")
+    implementation(libs.kotlinx.serialization.json)
 }

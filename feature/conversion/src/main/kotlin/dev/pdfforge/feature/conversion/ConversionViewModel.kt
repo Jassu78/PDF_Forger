@@ -1,4 +1,4 @@
-package dev.pdfforge.feature.compression
+package dev.pdfforge.feature.conversion
 
 import android.net.Uri
 import androidx.lifecycle.ViewModel
@@ -6,9 +6,8 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.pdfforge.data.impl.SafFileAdapter
 import dev.pdfforge.domain.core.OperationResult
-import dev.pdfforge.domain.core.tools.CompressPdfParams
-import dev.pdfforge.domain.core.tools.CompressionStrategy
-import dev.pdfforge.domain.core.usecases.CompressPdfUseCase
+import dev.pdfforge.domain.core.tools.ConvertPdfParams
+import dev.pdfforge.domain.core.usecases.ConvertPdfUseCase
 import dev.pdfforge.domain.models.PdfDocument
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,9 +16,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class CompressionUiState(
+enum class OutputFormat {
+    DOCX, PPTX, IMAGES, TXT
+}
+
+data class ConversionUiState(
     val selectedFile: PdfDocument? = null,
-    val strategy: CompressionStrategy = CompressionStrategy(),
+    val selectedFormat: OutputFormat = OutputFormat.DOCX,
     val isProcessing: Boolean = false,
     val progress: Float = 0f,
     val statusText: String = "",
@@ -28,13 +31,13 @@ data class CompressionUiState(
 )
 
 @HiltViewModel
-class CompressionViewModel @Inject constructor(
+class ConversionViewModel @Inject constructor(
     private val safFileAdapter: SafFileAdapter,
-    private val compressPdfUseCase: CompressPdfUseCase
+    private val convertPdfUseCase: ConvertPdfUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(CompressionUiState())
-    val uiState: StateFlow<CompressionUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(ConversionUiState())
+    val uiState: StateFlow<ConversionUiState> = _uiState.asStateFlow()
 
     fun onFileSelected(uri: Uri) {
         viewModelScope.launch {
@@ -47,15 +50,15 @@ class CompressionViewModel @Inject constructor(
         }
     }
 
-    fun updateStrategy(update: (CompressionStrategy) -> CompressionStrategy) {
-        _uiState.update { it.copy(strategy = update(it.strategy)) }
+    fun selectFormat(format: OutputFormat) {
+        _uiState.update { it.copy(selectedFormat = format) }
     }
 
     fun cancelOperation() {
         _uiState.update { it.copy(isProcessing = false) }
     }
 
-    fun compress() {
+    fun convert() {
         val currentState = _uiState.value
         val file = currentState.selectedFile ?: return
 
@@ -65,28 +68,27 @@ class CompressionViewModel @Inject constructor(
                     isProcessing = true, 
                     error = null, 
                     progress = 0.1f,
-                    statusText = "Analyzing PDF structure..."
+                    statusText = "Initializing converter engine..."
                 ) 
             }
             
-            val params = CompressPdfParams(
+            val params = ConvertPdfParams(
                 sourceUri = file.uri,
-                outputName = "Compressed_${file.name}",
-                strategy = currentState.strategy
+                targetFormat = currentState.selectedFormat,
+                outputName = "Converted_${file.name.removeSuffix(".pdf")}"
             )
 
-            // Simulating detailed status updates matching UI Screen 5
-            _uiState.update { it.copy(progress = 0.3f, statusText = "Opened PDF (${file.pageCount} pages)...") }
-            _uiState.update { it.copy(progress = 0.5f, statusText = "Found images, starting recompression...") }
+            // Simulating progress steps for Apache POI reconstruction
+            _uiState.update { it.copy(progress = 0.4f, statusText = "Extracting text and structure...") }
 
-            when (val result = compressPdfUseCase(params)) {
+            when (val result = convertPdfUseCase(params)) {
                 is OperationResult.Success -> {
                     _uiState.update { 
                         it.copy(
                             isProcessing = false, 
-                            resultUri = result.data, 
+                            resultUri = result.data,
                             progress = 1.0f,
-                            statusText = "Optimization complete!"
+                            statusText = "Conversion Successful!"
                         ) 
                     }
                 }
