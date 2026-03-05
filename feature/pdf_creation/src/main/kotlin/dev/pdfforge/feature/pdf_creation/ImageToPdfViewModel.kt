@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import androidx.work.WorkInfo
+import dev.pdfforge.data.worker.PdfWorker
 import dev.pdfforge.data.worker.WorkManagerHelper
 import dev.pdfforge.domain.core.tools.PageSize
 import dev.pdfforge.domain.models.OperationPayload
@@ -56,6 +58,10 @@ class ImageToPdfViewModel @Inject constructor(
         _uiState.update { it.copy(isProcessing = false, activeWorkId = null) }
     }
 
+    fun clearResult() {
+        _uiState.update { it.copy(resultUri = null, error = null) }
+    }
+
     fun createPdf(outputName: String) {
         val currentState = _uiState.value
         if (currentState.selectedImages.isEmpty()) return
@@ -67,12 +73,11 @@ class ImageToPdfViewModel @Inject constructor(
             pageSize = "A4"
         )
 
-        val workId = workManagerHelper.enqueuePdfOperation(payload)
-        
-        _uiState.update { it.copy(isProcessing = true, activeWorkId = workId) }
-
         viewModelScope.launch {
-            workManagerHelper.getWorkInfoById(workId).collect { workInfo ->
+            val workId: UUID = workManagerHelper.enqueuePdfOperation(payload)
+            _uiState.update { it.copy(isProcessing = true, activeWorkId = workId) }
+
+            workManagerHelper.getWorkInfoById(workId).collect { workInfo: WorkInfo? ->
                 if (workInfo != null) {
                     // Update progress and status from Worker
                     val progress = workInfo.progress.getFloat("progress", 0f)
@@ -81,7 +86,15 @@ class ImageToPdfViewModel @Inject constructor(
                     _uiState.update { it.copy(progress = progress, statusText = status) }
 
                     if (workInfo.state.isFinished) {
-                        _uiState.update { it.copy(isProcessing = false, activeWorkId = null) }
+                        val outputUriString = workInfo.outputData.getString(PdfWorker.KEY_RESULT_URI)
+                        val resultUri = outputUriString?.let { Uri.parse(it) }
+                        
+                        _uiState.update { it.copy(
+                            isProcessing = false, 
+                            activeWorkId = null,
+                            resultUri = resultUri,
+                            error = if (workInfo.state == WorkInfo.State.FAILED) "Operation failed" else null
+                        ) }
                     }
                 }
             }

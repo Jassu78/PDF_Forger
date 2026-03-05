@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.pdfforge.data.impl.SafFileAdapter
 import dev.pdfforge.data.worker.WorkManagerHelper
-import dev.pdfforge.domain.core.OperationResult
+import androidx.work.WorkInfo
+import androidx.work.Operation
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.models.PdfDocument
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,7 +44,7 @@ class ReorderPagesViewModel @Inject constructor(
     fun onFileSelected(uri: Uri) {
         viewModelScope.launch {
             when (val result = safFileAdapter.getPdfMetadata(uri)) {
-                is OperationResult.Success -> {
+                is OperationResult.Success<PdfDocument> -> {
                     val file = result.data
                     val pageList = (0 until file.pageCount).map { PageItem(it) }
                     _uiState.update { it.copy(selectedFile = file, pages = pageList) }

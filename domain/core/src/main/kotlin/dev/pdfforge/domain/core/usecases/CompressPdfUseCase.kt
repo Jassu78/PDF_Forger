@@ -1,7 +1,7 @@
 package dev.pdfforge.domain.core.usecases
 
 import android.net.Uri
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.core.tools.CompressPdfParams
 import dev.pdfforge.domain.core.tools.CompressPdfTool
 import javax.inject.Inject

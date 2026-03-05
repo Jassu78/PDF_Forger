@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.pdfforge.data.impl.SafFileAdapter
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.core.tools.CompressPdfParams
 import dev.pdfforge.domain.core.tools.CompressionStrategy
 import dev.pdfforge.domain.core.usecases.CompressPdfUseCase
@@ -39,10 +39,15 @@ class CompressionViewModel @Inject constructor(
     fun onFileSelected(uri: Uri) {
         viewModelScope.launch {
             when (val result = safFileAdapter.getPdfMetadata(uri)) {
-                is OperationResult.Success -> {
+                is OperationResult.Success<PdfDocument> -> {
                     _uiState.update { it.copy(selectedFile = result.data) }
                 }
-                else -> { /* Handle error */ }
+                is OperationResult.Error -> {
+                    _uiState.update { it.copy(error = result.message) }
+                }
+                is OperationResult.Cancelled -> {
+                    // Do nothing
+                }
             }
         }
     }

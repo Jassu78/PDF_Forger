@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.pdfforge.data.impl.SafFileAdapter
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.core.tools.ConvertPdfParams
 import dev.pdfforge.domain.core.usecases.ConvertPdfUseCase
 import dev.pdfforge.domain.models.PdfDocument
@@ -42,10 +42,15 @@ class ConversionViewModel @Inject constructor(
     fun onFileSelected(uri: Uri) {
         viewModelScope.launch {
             when (val result = safFileAdapter.getPdfMetadata(uri)) {
-                is OperationResult.Success -> {
+                is OperationResult.Success<PdfDocument> -> {
                     _uiState.update { it.copy(selectedFile = result.data) }
                 }
-                else -> { /* Handle error */ }
+                is OperationResult.Error -> {
+                    _uiState.update { it.copy(error = result.message) }
+                }
+                is OperationResult.Cancelled -> {
+                    // Do nothing
+                }
             }
         }
     }
@@ -72,9 +77,16 @@ class ConversionViewModel @Inject constructor(
                 ) 
             }
             
+            val targetPdfFormat = when(currentState.selectedFormat) {
+                OutputFormat.DOCX -> dev.pdfforge.domain.core.tools.PdfConvertFormat.DOCX
+                OutputFormat.PPTX -> dev.pdfforge.domain.core.tools.PdfConvertFormat.PPTX
+                OutputFormat.TXT -> dev.pdfforge.domain.core.tools.PdfConvertFormat.DOCX // Fallback for now since TXT isn't in Enum yet
+                OutputFormat.IMAGES -> dev.pdfforge.domain.core.tools.PdfConvertFormat.IMAGE_JPEG
+            }
+            
             val params = ConvertPdfParams(
                 sourceUri = file.uri,
-                targetFormat = currentState.selectedFormat,
+                targetFormat = targetPdfFormat,
                 outputName = "Converted_${file.name.removeSuffix(".pdf")}"
             )
 

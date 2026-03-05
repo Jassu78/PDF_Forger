@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.kotlin.kapt)
 }
 
 android {
@@ -21,6 +23,11 @@ dependencies {
     implementation(project(":domain:models"))
     implementation(project(":domain:core"))
     implementation(project(":data:impl"))
+    implementation(project(":data:storage"))
+    implementation(project(":engine:mupdf"))
     
-    implementation(libs.poi-ooxml)
+    implementation(libs.poi.ooxml)
+    
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
 }

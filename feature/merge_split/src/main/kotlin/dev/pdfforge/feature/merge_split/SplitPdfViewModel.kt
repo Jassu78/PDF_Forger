@@ -4,9 +4,11 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import androidx.work.WorkInfo
+import androidx.work.Operation
 import dev.pdfforge.data.impl.SafFileAdapter
 import dev.pdfforge.data.worker.WorkManagerHelper
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.models.OperationPayload
 import dev.pdfforge.domain.models.PdfDocument
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,7 +42,7 @@ class SplitPdfViewModel @Inject constructor(
     fun onFileSelected(uri: Uri) {
         viewModelScope.launch {
             when (val result = safFileAdapter.getPdfMetadata(uri)) {
-                is OperationResult.Success -> {
+                is OperationResult.Success<PdfDocument> -> {
                     _uiState.update { it.copy(selectedFile = result.data) }
                 }
                 else -> { /* Handle error */ }

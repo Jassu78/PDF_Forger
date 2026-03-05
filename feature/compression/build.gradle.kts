@@ -18,7 +18,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
 
     compileOptions {
@@ -32,6 +32,7 @@ dependencies {
     implementation(project(":domain:core"))
     implementation(project(":common:ui"))
     implementation(project(":common:utils"))
+    implementation(project(":data:impl"))
     
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

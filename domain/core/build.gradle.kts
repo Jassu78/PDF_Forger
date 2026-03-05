@@ -20,6 +20,7 @@ android {
 dependencies {
     implementation(project(":domain:models"))
     implementation(libs.coroutines.android)
+    implementation("javax.inject:javax.inject:1")
     
     testImplementation(libs.junit5.api)
     testRuntimeOnly(libs.junit5.engine)

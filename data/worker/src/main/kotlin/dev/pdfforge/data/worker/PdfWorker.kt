@@ -8,7 +8,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.core.tools.CompressionStrategy
 import dev.pdfforge.domain.core.tools.ImageToPdfParams
 import dev.pdfforge.domain.core.tools.MergePdfParams

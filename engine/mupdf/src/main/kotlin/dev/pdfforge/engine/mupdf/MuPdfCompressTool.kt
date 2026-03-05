@@ -4,7 +4,7 @@ import android.net.Uri
 import android.os.ParcelFileDescriptor
 import dev.pdfforge.data.impl.SafFileAdapter
 import dev.pdfforge.data.storage.TempFileManager
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.core.ValidationResult
 import dev.pdfforge.domain.core.tools.CompressPdfParams
 import dev.pdfforge.domain.core.tools.CompressPdfTool
@@ -37,7 +37,7 @@ class MuPdfCompressTool @Inject constructor(
             val tempFile = tempFileManager.createTempFile(".pdf")
             val outputPfd = ParcelFileDescriptor.open(
                 tempFile,
-                ParcelFileDescriptor.MODE_READ_WRITE
+                ParcelFileDescriptor.MODE_READ_WRITE or ParcelFileDescriptor.MODE_CREATE
             )
 
             val success = MuPdfJni.optimizeDocument(

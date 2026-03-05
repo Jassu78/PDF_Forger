@@ -4,9 +4,11 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import androidx.work.WorkInfo
 import dev.pdfforge.data.impl.SafFileAdapter
+import dev.pdfforge.data.worker.PdfWorker
 import dev.pdfforge.data.worker.WorkManagerHelper
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.models.OperationPayload
 import dev.pdfforge.domain.models.PdfDocument
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,7 +42,7 @@ class MergePdfViewModel @Inject constructor(
         viewModelScope.launch {
             val newFiles = uris.mapNotNull { uri ->
                 when (val result = safFileAdapter.getPdfMetadata(uri)) {
-                    is OperationResult.Success -> result.data
+                    is OperationResult.Success<PdfDocument> -> result.data
                     else -> null
                 }
             }
@@ -70,6 +72,10 @@ class MergePdfViewModel @Inject constructor(
         _uiState.update { it.copy(isProcessing = false, activeWorkId = null) }
     }
 
+    fun clearResult() {
+        _uiState.update { it.copy(resultUri = null, error = null) }
+    }
+
     fun mergeFiles(outputName: String) {
         val currentState = _uiState.value
         if (currentState.selectedFiles.size < 2) return
@@ -79,12 +85,11 @@ class MergePdfViewModel @Inject constructor(
             outputName = outputName
         )
 
-        val workId = workManagerHelper.enqueuePdfOperation(payload)
-        
-        _uiState.update { it.copy(isProcessing = true, activeWorkId = workId) }
-
         viewModelScope.launch {
-            workManagerHelper.getWorkInfoById(workId).collect { workInfo ->
+            val workId: UUID = workManagerHelper.enqueuePdfOperation(payload)
+            _uiState.update { it.copy(isProcessing = true, activeWorkId = workId) }
+
+            workManagerHelper.getWorkInfoById(workId).collect { workInfo: WorkInfo? ->
                 if (workInfo != null) {
                     val progress = workInfo.progress.getFloat("progress", 0f)
                     val status = workInfo.progress.getString("status_text") ?: ""
@@ -92,7 +97,15 @@ class MergePdfViewModel @Inject constructor(
                     _uiState.update { it.copy(progress = progress, statusText = status) }
 
                     if (workInfo.state.isFinished) {
-                        _uiState.update { it.copy(isProcessing = false, activeWorkId = null) }
+                        val outputUriString = workInfo.outputData.getString(PdfWorker.KEY_RESULT_URI)
+                        val resultUri = outputUriString?.let { Uri.parse(it) }
+
+                        _uiState.update { it.copy(
+                            isProcessing = false,
+                            activeWorkId = null,
+                            resultUri = resultUri,
+                            error = if (workInfo.state == WorkInfo.State.FAILED) "Merge operation failed" else null
+                        ) }
                     }
                 }
             }

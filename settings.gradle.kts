@@ -10,6 +10,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url = uri("https://maven.ghostscript.com/") }
     }
 }
 
@@ -38,3 +39,5 @@ include(":feature:pdf_creation")
 include(":feature:merge_split")
 include(":feature:compression")
 include(":feature:conversion")
+
+include(":app")

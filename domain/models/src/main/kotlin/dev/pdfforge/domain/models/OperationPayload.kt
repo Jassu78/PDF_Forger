@@ -1,8 +1,6 @@
 package dev.pdfforge.domain.models
 
 import android.net.Uri
-import dev.pdfforge.domain.core.tools.CompressionStrategy
-import dev.pdfforge.domain.core.tools.PageSize
 import kotlinx.serialization.Serializable
 
 /**

@@ -18,7 +18,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
 
     compileOptions {
@@ -32,6 +32,8 @@ dependencies {
     implementation(project(":domain:core"))
     implementation(project(":common:ui"))
     implementation(project(":common:utils"))
+    implementation(project(":data:impl"))
+    implementation(project(":data:worker"))
     
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
@@ -39,4 +41,5 @@ dependencies {
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
     implementation(libs.navigation.compose)
+    implementation(libs.workmanager.ktx)
 }

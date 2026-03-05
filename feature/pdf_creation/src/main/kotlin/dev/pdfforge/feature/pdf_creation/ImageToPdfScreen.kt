@@ -24,10 +24,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.ExperimentalMaterial3Api
 import coil.compose.AsyncImage
 import dev.pdfforge.common.ui.components.ProgressScreen
+import dev.pdfforge.common.ui.components.ResultScreen
 import dev.pdfforge.common.ui.theme.PdfForgeTheme
 import dev.pdfforge.domain.core.tools.PageSize
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +40,7 @@ fun ImageToPdfScreen(
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris ->
@@ -48,6 +53,20 @@ fun ImageToPdfScreen(
             statusText = uiState.statusText,
             progress = uiState.progress,
             onCancel = { viewModel.cancelOperation() }
+        )
+    } else if (uiState.resultUri != null || uiState.error != null) {
+        ResultScreen(
+            isSuccess = uiState.resultUri != null,
+            message = if (uiState.resultUri != null) "Your PDF has been created successfully." else uiState.error ?: "An unknown error occurred.",
+            resultUri = uiState.resultUri,
+            onDone = { viewModel.clearResult() },
+            onOpenFile = { uri ->
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "application/pdf")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, "Open PDF"))
+            }
         )
     } else {
         PdfForgeTheme {

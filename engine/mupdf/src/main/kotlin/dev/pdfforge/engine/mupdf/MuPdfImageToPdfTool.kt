@@ -3,7 +3,7 @@ package dev.pdfforge.engine.mupdf
 import android.net.Uri
 import dev.pdfforge.data.impl.SafFileAdapter
 import dev.pdfforge.data.storage.TempFileManager
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.core.ValidationResult
 import dev.pdfforge.domain.core.tools.ImageToPdfParams
 import dev.pdfforge.domain.core.tools.ImageToPdfTool
@@ -50,7 +50,7 @@ class MuPdfImageToPdfTool @Inject constructor(
             val tempFile = tempFileManager.createTempFile(".pdf")
             val outputPfd = android.os.ParcelFileDescriptor.open(
                 tempFile,
-                android.os.ParcelFileDescriptor.MODE_READ_WRITE
+                android.os.ParcelFileDescriptor.MODE_READ_WRITE or android.os.ParcelFileDescriptor.MODE_CREATE
             )
             
             val saved = MuPdfJni.saveToFd(docHandle, outputPfd.fd)
