@@ -1,11 +1,11 @@
 package dev.pdfforge.domain.core.usecases
 
 import android.net.Uri
-import dev.pdfforge.domain.core.OperationResult
 import dev.pdfforge.domain.core.ValidationResult
 import dev.pdfforge.domain.core.tools.ImageToPdfParams
 import dev.pdfforge.domain.core.tools.ImageToPdfTool
 import dev.pdfforge.domain.models.ErrorCode
+import dev.pdfforge.domain.models.OperationResult
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -33,6 +33,20 @@ class CreatePdfUseCaseTest {
         // Assert
         assertTrue(result is OperationResult.Success)
         assertEquals(expectedUri, (result as OperationResult.Success).data)
+    }
+
+    @Test
+    fun `invoke should return error when validation fails`() = runTest {
+        // Arrange
+        val params = ImageToPdfParams(listOf(mockk()), "output.pdf")
+        every { tool.validate(params) } returns ValidationResult(false)
+
+        // Act
+        val result = useCase(params)
+
+        // Assert
+        assertTrue(result is OperationResult.Error)
+        assertEquals(ErrorCode.INSUFFICIENT_INPUT, (result as OperationResult.Error).code)
     }
 
     @Test

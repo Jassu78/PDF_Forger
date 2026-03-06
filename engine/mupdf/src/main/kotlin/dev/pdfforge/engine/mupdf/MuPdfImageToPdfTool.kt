@@ -3,7 +3,7 @@ package dev.pdfforge.engine.mupdf
 import android.net.Uri
 import dev.pdfforge.data.impl.SafFileAdapter
 import dev.pdfforge.data.storage.TempFileManager
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.core.ValidationResult
 import dev.pdfforge.domain.core.tools.ImageToPdfParams
 import dev.pdfforge.domain.core.tools.ImageToPdfTool

@@ -1,5 +1,6 @@
 package dev.pdfforge.feature.pdf_creation
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,10 +38,38 @@ fun ImageToPdfScreen(
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         viewModel.onImagesSelected(uris)
+    }
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Long
+            )
+            viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(uiState.resultUri) {
+        uiState.resultUri?.let { uri ->
+            snackbarHostState.showSnackbar(
+                message = "PDF created successfully.",
+                duration = SnackbarDuration.Short,
+                actionLabel = "Open",
+                withDismissAction = true
+            ).let { result ->
+                if (result == SnackbarResult.ActionPerformed) {
+                    context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/pdf").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+                }
+            }
+            viewModel.clearResult()
+        }
     }
 
     if (uiState.isProcessing) {
@@ -52,6 +82,7 @@ fun ImageToPdfScreen(
     } else {
         PdfForgeTheme {
             Scaffold(
+                snackbarHost = { SnackbarHost(snackbarHostState) },
                 topBar = {
                     TopAppBar(
                         title = { Text("Image to PDF", fontWeight = FontWeight.Bold) },

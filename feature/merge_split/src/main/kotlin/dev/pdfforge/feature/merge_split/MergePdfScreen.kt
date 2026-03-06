@@ -1,5 +1,6 @@
 package dev.pdfforge.feature.merge_split
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -14,12 +15,16 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.pdfforge.common.ui.components.ProgressScreen
@@ -33,10 +38,38 @@ fun MergePdfScreen(
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         viewModel.onFilesSelected(uris)
+    }
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Long
+            )
+            viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(uiState.resultUri) {
+        uiState.resultUri?.let { uri ->
+            snackbarHostState.showSnackbar(
+                message = "PDFs merged successfully.",
+                duration = SnackbarDuration.Short,
+                actionLabel = "Open",
+                withDismissAction = true
+            ).let { result ->
+                if (result == SnackbarResult.ActionPerformed) {
+                    context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/pdf").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+                }
+            }
+            viewModel.clearResult()
+        }
     }
 
     if (uiState.isProcessing) {
@@ -49,6 +82,7 @@ fun MergePdfScreen(
     } else {
         PdfForgeTheme {
             Scaffold(
+                snackbarHost = { SnackbarHost(snackbarHostState) },
                 topBar = {
                     TopAppBar(
                         title = { Text("Merge PDFs", fontWeight = FontWeight.Bold) },
@@ -108,7 +142,7 @@ fun MergePdfScreen(
                         Text(
                             "Drag items to reorder",
                             modifier = Modifier.fillMaxWidth(),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.secondary
                         )

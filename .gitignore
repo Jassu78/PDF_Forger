@@ -40,6 +40,9 @@ output.json
 cmake-build-*/
 obj/
 
+# MuPDF prebuilts (optional; add prebuilt/include and prebuilt/<ABI>/libmupdf.a locally)
+engine/mupdf/prebuilt/
+
 # -----------------------------------------------------------------------------
 # Kotlin / JVM
 # -----------------------------------------------------------------------------

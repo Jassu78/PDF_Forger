@@ -1,9 +1,10 @@
 package dev.pdfforge.domain.core.usecases
 
 import android.net.Uri
-import dev.pdfforge.domain.core.OperationResult
 import dev.pdfforge.domain.core.tools.ConvertPdfParams
 import dev.pdfforge.domain.core.tools.ConvertPdfTool
+import dev.pdfforge.domain.models.ErrorCode
+import dev.pdfforge.domain.models.OperationResult
 import javax.inject.Inject
 
 /**
@@ -15,9 +16,11 @@ class ConvertPdfUseCase @Inject constructor(
     suspend operator fun invoke(params: ConvertPdfParams): OperationResult<Uri> {
         val validation = convertPdfTool.validate(params)
         if (!validation.isValid) {
-            // Handle validation error
+            return OperationResult.Error(
+                code = ErrorCode.UNSUPPORTED_FORMAT,
+                message = "Validation failed: invalid source or unsupported conversion target."
+            )
         }
-        
         return convertPdfTool.execute(params)
     }
 }

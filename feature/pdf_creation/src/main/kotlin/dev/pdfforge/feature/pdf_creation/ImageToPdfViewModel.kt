@@ -3,6 +3,7 @@ package dev.pdfforge.feature.pdf_creation
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.pdfforge.data.worker.WorkManagerHelper
 import dev.pdfforge.domain.core.tools.PageSize
@@ -50,10 +51,18 @@ class ImageToPdfViewModel @Inject constructor(
     }
 
     fun cancelOperation() {
-        _uiState.value.activeWorkId?.let { 
-            workManagerHelper.cancelWork(it)
+        _uiState.value.activeWorkId?.let { id: UUID ->
+            workManagerHelper.cancelWork(id)
         }
         _uiState.update { it.copy(isProcessing = false, activeWorkId = null) }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    fun clearResult() {
+        _uiState.update { it.copy(resultUri = null) }
     }
 
     fun createPdf(outputName: String) {
@@ -72,16 +81,32 @@ class ImageToPdfViewModel @Inject constructor(
         _uiState.update { it.copy(isProcessing = true, activeWorkId = workId) }
 
         viewModelScope.launch {
-            workManagerHelper.getWorkInfoById(workId).collect { workInfo ->
+            workManagerHelper.getWorkInfoById(workId).collect { workInfo: WorkInfo? ->
                 if (workInfo != null) {
                     // Update progress and status from Worker
                     val progress = workInfo.progress.getFloat("progress", 0f)
                     val status = workInfo.progress.getString("status_text") ?: ""
                     
-                    _uiState.update { it.copy(progress = progress, statusText = status) }
+                    _uiState.update { state ->
+                        state.copy(progress = progress, statusText = status)
+                    }
 
                     if (workInfo.state.isFinished) {
-                        _uiState.update { it.copy(isProcessing = false, activeWorkId = null) }
+                        _uiState.update { state ->
+                            state.copy(isProcessing = false, activeWorkId = null)
+                        }
+                        when (workInfo.state) {
+                            androidx.work.WorkInfo.State.SUCCEEDED -> {
+                                workInfo.outputData.getString("result_uri")?.let { uriString ->
+                                    _uiState.update { it.copy(resultUri = Uri.parse(uriString)) }
+                                }
+                            }
+                            androidx.work.WorkInfo.State.FAILED -> {
+                                val message = workInfo.outputData.getString("error_message") ?: "Failed to create PDF."
+                                _uiState.update { it.copy(error = message) }
+                            }
+                            else -> { /* Cancelled or other */ }
+                        }
                     }
                 }
             }

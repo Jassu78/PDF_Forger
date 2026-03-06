@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.pdfforge.data.impl.SafFileAdapter
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.core.tools.CompressPdfParams
 import dev.pdfforge.domain.core.tools.CompressionStrategy
 import dev.pdfforge.domain.core.usecases.CompressPdfUseCase
@@ -39,7 +39,7 @@ class CompressionViewModel @Inject constructor(
     fun onFileSelected(uri: Uri) {
         viewModelScope.launch {
             when (val result = safFileAdapter.getPdfMetadata(uri)) {
-                is OperationResult.Success -> {
+                is OperationResult.Success<PdfDocument> -> {
                     _uiState.update { it.copy(selectedFile = result.data) }
                 }
                 else -> { /* Handle error */ }
@@ -53,6 +53,14 @@ class CompressionViewModel @Inject constructor(
 
     fun cancelOperation() {
         _uiState.update { it.copy(isProcessing = false) }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    fun clearResult() {
+        _uiState.update { it.copy(resultUri = null) }
     }
 
     fun compress() {
@@ -80,7 +88,7 @@ class CompressionViewModel @Inject constructor(
             _uiState.update { it.copy(progress = 0.5f, statusText = "Found images, starting recompression...") }
 
             when (val result = compressPdfUseCase(params)) {
-                is OperationResult.Success -> {
+                is OperationResult.Success<Uri> -> {
                     _uiState.update { 
                         it.copy(
                             isProcessing = false, 

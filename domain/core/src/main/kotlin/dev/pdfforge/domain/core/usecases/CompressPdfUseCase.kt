@@ -1,9 +1,10 @@
 package dev.pdfforge.domain.core.usecases
 
 import android.net.Uri
-import dev.pdfforge.domain.core.OperationResult
 import dev.pdfforge.domain.core.tools.CompressPdfParams
 import dev.pdfforge.domain.core.tools.CompressPdfTool
+import dev.pdfforge.domain.models.ErrorCode
+import dev.pdfforge.domain.models.OperationResult
 import javax.inject.Inject
 
 /**
@@ -15,9 +16,11 @@ class CompressPdfUseCase @Inject constructor(
     suspend operator fun invoke(params: CompressPdfParams): OperationResult<Uri> {
         val validation = compressPdfTool.validate(params)
         if (!validation.isValid) {
-            // Handle validation error
+            return OperationResult.Error(
+                code = ErrorCode.INVALID_PDF,
+                message = "Validation failed: invalid or unsupported PDF for compression."
+            )
         }
-        
         return compressPdfTool.execute(params)
     }
 }

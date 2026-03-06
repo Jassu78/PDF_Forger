@@ -3,11 +3,14 @@ package dev.pdfforge.feature.merge_split
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.pdfforge.data.impl.SafFileAdapter
 import dev.pdfforge.data.worker.WorkManagerHelper
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.data.worker.PdfWorker
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.models.OperationPayload
+import dev.pdfforge.domain.models.PageRangePayload
 import dev.pdfforge.domain.models.PdfDocument
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,7 +43,7 @@ class SplitPdfViewModel @Inject constructor(
     fun onFileSelected(uri: Uri) {
         viewModelScope.launch {
             when (val result = safFileAdapter.getPdfMetadata(uri)) {
-                is OperationResult.Success -> {
+                is OperationResult.Success<PdfDocument> -> {
                     _uiState.update { it.copy(selectedFile = result.data) }
                 }
                 else -> { /* Handle error */ }
@@ -53,8 +56,8 @@ class SplitPdfViewModel @Inject constructor(
     }
 
     fun cancelOperation() {
-        _uiState.value.activeWorkId?.let { 
-            workManagerHelper.cancelWork(it)
+        _uiState.value.activeWorkId?.let { id: UUID ->
+            workManagerHelper.cancelWork(id)
         }
         _uiState.update { it.copy(isProcessing = false, activeWorkId = null) }
     }
@@ -62,24 +65,81 @@ class SplitPdfViewModel @Inject constructor(
     fun splitPdf(outputName: String) {
         val currentState = _uiState.value
         val file = currentState.selectedFile ?: return
-        if (currentState.pageRanges.isEmpty()) return
+        if (currentState.pageRanges.isBlank()) return
 
-        // In a real implementation, we would parse the ranges string into a List<PageRange>
-        // and pass it to the worker via a new OperationPayload type.
-        
-        _uiState.update { 
+        val parsed = parsePageRanges(currentState.pageRanges)
+        if (parsed.isEmpty()) {
+            _uiState.update { it.copy(error = "Invalid page range. Use format: 1-5, 8, 10-12") }
+            return
+        }
+
+        val payload = OperationPayload.SplitPdf(
+            sourceUri = file.uri.toString(),
+            outputName = outputName,
+            pageRanges = parsed
+        )
+        val workId = workManagerHelper.enqueuePdfOperation(payload)
+        _uiState.update {
             it.copy(
-                isProcessing = true, 
-                error = null, 
+                isProcessing = true,
+                error = null,
                 progress = 0.1f,
-                statusText = "Analyzing page ranges..."
-            ) 
+                statusText = "Splitting PDF...",
+                activeWorkId = workId
+            )
         }
-        
-        // Simulating the worker flow
+
         viewModelScope.launch {
-            _uiState.update { it.copy(progress = 0.5f, statusText = "Extracting pages...") }
-            // worker logic would go here
+            workManagerHelper.getWorkInfoById(workId).collect { workInfo ->
+                if (workInfo == null) return@collect
+                workInfo.progress.getFloat(PdfWorker.KEY_PROGRESS, 0f).let { p ->
+                    _uiState.update { it.copy(progress = p, statusText = workInfo.progress.getString(PdfWorker.KEY_STATUS) ?: it.statusText) }
+                }
+                if (workInfo.state.isFinished) {
+                    _uiState.update { state ->
+                        state.copy(isProcessing = false, activeWorkId = null)
+                    }
+                    when (workInfo.state) {
+                        WorkInfo.State.SUCCEEDED -> {
+                            workInfo.outputData.getString(PdfWorker.KEY_RESULT_URI)?.let { uriString ->
+                                _uiState.update { it.copy(resultUri = Uri.parse(uriString)) }
+                            }
+                        }
+                        WorkInfo.State.FAILED -> {
+                            val message = workInfo.outputData.getString(PdfWorker.KEY_ERROR) ?: "Split failed."
+                            _uiState.update { it.copy(error = message) }
+                        }
+                        else -> { /* Cancelled */ }
+                    }
+                }
+            }
         }
+    }
+
+    /** Parse "1-5, 8, 10-12" (1-based) into 0-based PageRangePayload list. */
+    private fun parsePageRanges(input: String): List<PageRangePayload> {
+        val result = mutableListOf<PageRangePayload>()
+        for (part in input.split(",").map { it.trim() }.filter { it.isNotEmpty() }) {
+            if (part.contains("-")) {
+                val tokens = part.split("-", limit = 2).map { it.trim().toIntOrNull() }
+                if (tokens.size == 2 && tokens[0] != null && tokens[1] != null) {
+                    val a = tokens[0]!!.coerceAtLeast(1)
+                    val b = tokens[1]!!.coerceAtLeast(1)
+                    result.add(PageRangePayload(start = minOf(a, b) - 1, end = maxOf(a, b) - 1))
+                }
+            } else {
+                val n = part.toIntOrNull()?.coerceAtLeast(1) ?: continue
+                result.add(PageRangePayload(start = n - 1, end = n - 1))
+            }
+        }
+        return result
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    fun clearResult() {
+        _uiState.update { it.copy(resultUri = null) }
     }
 }

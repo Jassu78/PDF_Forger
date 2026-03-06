@@ -8,17 +8,23 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.domain.models.OperationResult
+import dev.pdfforge.domain.core.tools.CompressPdfParams
 import dev.pdfforge.domain.core.tools.CompressionStrategy
+import dev.pdfforge.domain.core.tools.ConvertPdfParams
 import dev.pdfforge.domain.core.tools.ImageToPdfParams
 import dev.pdfforge.domain.core.tools.MergePdfParams
-import dev.pdfforge.domain.core.tools.CompressPdfParams
-import dev.pdfforge.domain.core.tools.ConvertPdfParams
+import dev.pdfforge.domain.core.tools.PageRange
 import dev.pdfforge.domain.core.tools.PageSize
+import dev.pdfforge.domain.core.tools.SplitPdfParams
+import dev.pdfforge.domain.core.tools.ReorderPdfParams
+import dev.pdfforge.domain.core.tools.PageOrderItem
 import dev.pdfforge.domain.core.usecases.CreatePdfUseCase
 import dev.pdfforge.domain.core.usecases.MergePdfUseCase
 import dev.pdfforge.domain.core.usecases.CompressPdfUseCase
 import dev.pdfforge.domain.core.usecases.ConvertPdfUseCase
+import dev.pdfforge.domain.core.usecases.SplitPdfUseCase
+import dev.pdfforge.domain.core.usecases.ReorderPdfUseCase
 import dev.pdfforge.domain.models.OperationPayload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -31,7 +37,9 @@ class PdfWorker @AssistedInject constructor(
     private val createPdfUseCase: CreatePdfUseCase,
     private val mergePdfUseCase: MergePdfUseCase,
     private val compressPdfUseCase: CompressPdfUseCase,
-    private val convertPdfUseCase: ConvertPdfUseCase
+    private val convertPdfUseCase: ConvertPdfUseCase,
+    private val splitPdfUseCase: SplitPdfUseCase,
+    private val reorderPdfUseCase: ReorderPdfUseCase
 ) : CoroutineWorker(context, workerParams) {
 
     companion object {
@@ -46,6 +54,8 @@ class PdfWorker @AssistedInject constructor(
         const val OP_MERGE_PDF = "merge_pdf"
         const val OP_COMPRESS_PDF = "compress_pdf"
         const val OP_CONVERT_PDF = "convert_pdf"
+        const val OP_SPLIT_PDF = "split_pdf"
+        const val OP_REORDER_PDF = "reorder_pdf"
     }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -64,6 +74,14 @@ class PdfWorker @AssistedInject constructor(
             OP_COMPRESS_PDF -> {
                 val payload = Json.decodeFromString<OperationPayload.CompressPdf>(payloadJson)
                 executeCompressPdf(payload)
+            }
+            OP_SPLIT_PDF -> {
+                val payload = Json.decodeFromString<OperationPayload.SplitPdf>(payloadJson)
+                executeSplitPdf(payload)
+            }
+            OP_REORDER_PDF -> {
+                val payload = Json.decodeFromString<OperationPayload.ReorderPdf>(payloadJson)
+                executeReorderPdf(payload)
             }
             else -> Result.failure()
         }
@@ -113,6 +131,36 @@ class PdfWorker @AssistedInject constructor(
             strategy = strategy
         )
         return when (val result = compressPdfUseCase(params)) {
+            is OperationResult.Success -> Result.success(workDataOf(KEY_RESULT_URI to result.data.toString()))
+            is OperationResult.Error -> Result.failure(workDataOf(KEY_ERROR to result.message))
+            OperationResult.Cancelled -> Result.retry()
+        }
+    }
+
+    private suspend fun executeSplitPdf(payload: OperationPayload.SplitPdf): Result {
+        setProgress(workDataOf(KEY_PROGRESS to 0.2f, KEY_STATUS to "Splitting PDF..."))
+        val pageRanges = payload.pageRanges.map { PageRange(start = it.start, end = it.end) }
+        val params = SplitPdfParams(
+            sourceUri = Uri.parse(payload.sourceUri),
+            outputName = payload.outputName,
+            pageRanges = pageRanges
+        )
+        return when (val result = splitPdfUseCase(params)) {
+            is OperationResult.Success -> Result.success(workDataOf(KEY_RESULT_URI to result.data.toString()))
+            is OperationResult.Error -> Result.failure(workDataOf(KEY_ERROR to result.message))
+            OperationResult.Cancelled -> Result.retry()
+        }
+    }
+
+    private suspend fun executeReorderPdf(payload: OperationPayload.ReorderPdf): Result {
+        setProgress(workDataOf(KEY_PROGRESS to 0.2f, KEY_STATUS to "Reordering pages..."))
+        val pageOrder = payload.pageOrder.map { PageOrderItem(pageIndex = it.pageIndex, rotation = it.rotation) }
+        val params = ReorderPdfParams(
+            sourceUri = Uri.parse(payload.sourceUri),
+            outputName = payload.outputName,
+            pageOrder = pageOrder
+        )
+        return when (val result = reorderPdfUseCase(params)) {
             is OperationResult.Success -> Result.success(workDataOf(KEY_RESULT_URI to result.data.toString()))
             is OperationResult.Error -> Result.failure(workDataOf(KEY_ERROR to result.message))
             OperationResult.Cancelled -> Result.retry()

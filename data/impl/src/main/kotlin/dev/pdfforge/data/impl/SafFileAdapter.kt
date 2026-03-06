@@ -1,6 +1,7 @@
 package dev.pdfforge.data.impl
 
 import android.content.Context
+import android.database.Cursor
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
@@ -20,17 +21,22 @@ class SafFileAdapter @Inject constructor(
 ) {
     /**
      * Resolves metadata for a given URI.
+     * Defensive against content resolvers that omit OpenableColumns (getColumnIndex returns -1).
      */
     fun getPdfMetadata(uri: Uri): OperationResult<PdfDocument> {
         return try {
-            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor: Cursor ->
                 val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                 val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-                
+                if (nameIndex == -1 || sizeIndex == -1) {
+                    return@use OperationResult.Error(
+                        ErrorCode.CANNOT_OPEN_FILE,
+                        message = "Content provider did not return required metadata columns."
+                    )
+                }
                 if (cursor.moveToFirst()) {
                     val name = cursor.getString(nameIndex) ?: "unknown.pdf"
                     val size = cursor.getLong(sizeIndex)
-                    
                     OperationResult.Success(
                         PdfDocument(
                             uri = uri,

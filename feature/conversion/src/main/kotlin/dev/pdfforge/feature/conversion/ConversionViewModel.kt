@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.pdfforge.data.impl.SafFileAdapter
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.core.tools.ConvertPdfParams
 import dev.pdfforge.domain.core.usecases.ConvertPdfUseCase
 import dev.pdfforge.domain.models.PdfDocument
@@ -42,7 +42,7 @@ class ConversionViewModel @Inject constructor(
     fun onFileSelected(uri: Uri) {
         viewModelScope.launch {
             when (val result = safFileAdapter.getPdfMetadata(uri)) {
-                is OperationResult.Success -> {
+                is OperationResult.Success<PdfDocument> -> {
                     _uiState.update { it.copy(selectedFile = result.data) }
                 }
                 else -> { /* Handle error */ }
@@ -56,6 +56,14 @@ class ConversionViewModel @Inject constructor(
 
     fun cancelOperation() {
         _uiState.update { it.copy(isProcessing = false) }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    fun clearResult() {
+        _uiState.update { it.copy(resultUri = null) }
     }
 
     fun convert() {
@@ -74,7 +82,7 @@ class ConversionViewModel @Inject constructor(
             
             val params = ConvertPdfParams(
                 sourceUri = file.uri,
-                targetFormat = currentState.selectedFormat,
+                targetFormat = currentState.selectedFormat.name,
                 outputName = "Converted_${file.name.removeSuffix(".pdf")}"
             )
 
@@ -82,7 +90,7 @@ class ConversionViewModel @Inject constructor(
             _uiState.update { it.copy(progress = 0.4f, statusText = "Extracting text and structure...") }
 
             when (val result = convertPdfUseCase(params)) {
-                is OperationResult.Success -> {
+                is OperationResult.Success<Uri> -> {
                     _uiState.update { 
                         it.copy(
                             isProcessing = false, 

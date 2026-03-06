@@ -9,13 +9,13 @@ class PdfForgeApp : Application() {
     override fun onCreate() {
         super.onCreate()
         
-        // Phase 0: INFRA-06 — StrictMode Enforcement for Debug Builds
+        // Phase 0: INFRA-06 — StrictMode for Debug (log only; penaltyDeath causes crashes
+        // when system code does disk access on main thread, e.g. IdsController.getIdsSharedPreference)
         if (BuildConfig.DEBUG) {
             StrictMode.setThreadPolicy(
                 StrictMode.ThreadPolicy.Builder()
                     .detectAll()
                     .penaltyLog()
-                    .penaltyDeath()
                     .build()
             )
             StrictMode.setVmPolicy(
@@ -23,7 +23,6 @@ class PdfForgeApp : Application() {
                     .detectLeakedSqlLiteObjects()
                     .detectLeakedClosableObjects()
                     .penaltyLog()
-                    .penaltyDeath()
                     .build()
             )
         }

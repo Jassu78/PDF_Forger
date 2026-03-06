@@ -16,10 +16,16 @@ import dev.pdfforge.common.ui.navigation.Screen
 import dev.pdfforge.common.ui.theme.PdfForgeTheme
 import dev.pdfforge.feature.compression.CompressionScreen
 import dev.pdfforge.feature.compression.CompressionViewModel
+import dev.pdfforge.feature.conversion.ConversionScreen
+import dev.pdfforge.feature.conversion.ConversionViewModel
 import dev.pdfforge.feature.home.HomeScreen
 import dev.pdfforge.feature.home.HomeViewModel
 import dev.pdfforge.feature.merge_split.MergePdfScreen
 import dev.pdfforge.feature.merge_split.MergePdfViewModel
+import dev.pdfforge.feature.merge_split.ReorderPagesScreen
+import dev.pdfforge.feature.merge_split.ReorderPagesViewModel
+import dev.pdfforge.feature.merge_split.SplitPdfScreen
+import dev.pdfforge.feature.merge_split.SplitPdfViewModel
 import dev.pdfforge.feature.pdf_creation.ImageToPdfScreen
 import dev.pdfforge.feature.pdf_creation.ImageToPdfViewModel
 
@@ -43,7 +49,7 @@ class MainActivity : ComponentActivity() {
                             val viewModel: HomeViewModel = hiltViewModel()
                             HomeScreen(
                                 viewModel = viewModel,
-                                onToolClick = { toolId ->
+                                onToolClick = { toolId: String ->
                                     when (toolId) {
                                         "image_to_pdf" -> navController.navigate(Screen.ImageToPdf.route)
                                         "merge_pdf" -> navController.navigate(Screen.MergePdf.route)
@@ -79,11 +85,28 @@ class MainActivity : ComponentActivity() {
                                 onBackClick = { navController.popBackStack() }
                             )
                         }
-                        
-                        // Remaining placeholders
-                        composable(Screen.ConvertPdf.route) { /* TODO */ }
-                        composable(Screen.SplitPdf.route) { /* TODO */ }
-                        composable(Screen.ReorderPages.route) { /* TODO */ }
+
+                        composable(Screen.ConvertPdf.route) {
+                            val viewModel: ConversionViewModel = hiltViewModel()
+                            ConversionScreen(
+                                viewModel = viewModel,
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Screen.SplitPdf.route) {
+                            val viewModel: SplitPdfViewModel = hiltViewModel()
+                            SplitPdfScreen(
+                                viewModel = viewModel,
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        }
+                        composable(Screen.ReorderPages.route) {
+                            val viewModel: ReorderPagesViewModel = hiltViewModel()
+                            ReorderPagesScreen(
+                                viewModel = viewModel,
+                                onBackClick = { navController.popBackStack() }
+                            )
+                        }
                     }
                 }
             }

@@ -1,8 +1,5 @@
 package dev.pdfforge.domain.models
 
-import android.net.Uri
-import dev.pdfforge.domain.core.tools.CompressionStrategy
-import dev.pdfforge.domain.core.tools.PageSize
 import kotlinx.serialization.Serializable
 
 /**
@@ -32,7 +29,33 @@ sealed class OperationPayload {
         val outputName: String,
         val strategy: CompressionStrategyPayload
     ) : OperationPayload()
+
+    @Serializable
+    data class SplitPdf(
+        val sourceUri: String,
+        val outputName: String,
+        val pageRanges: List<PageRangePayload>
+    ) : OperationPayload()
+
+    @Serializable
+    data class ReorderPdf(
+        val sourceUri: String,
+        val outputName: String,
+        val pageOrder: List<PageOrderItemPayload>
+    ) : OperationPayload()
 }
+
+@Serializable
+data class PageRangePayload(
+    val start: Int,
+    val end: Int
+)
+
+@Serializable
+data class PageOrderItemPayload(
+    val pageIndex: Int,
+    val rotation: Int
+)
 
 @Serializable
 data class CompressionStrategyPayload(

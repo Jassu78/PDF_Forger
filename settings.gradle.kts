@@ -15,6 +15,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "PDF Forger"
 
+// App (main runnable module)
+include(":app")
+
 // Domain Modules
 include(":domain:models")
 include(":domain:core")

@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.compose.compiler)
     alias(libs.plugins.hilt)
     id("kotlin-kapt")
 }
@@ -39,9 +40,6 @@ android {
         compose = true
         buildConfig = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
-    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -56,11 +54,20 @@ dependencies {
     implementation(project(":data:storage"))
     implementation(project(":common:ui"))
     implementation(project(":common:utils"))
+    implementation(project(":engine:mupdf"))
+    implementation(project(":engine:converter"))
+    implementation(project(":feature:home"))
+    implementation(project(":feature:pdf_creation"))
+    implementation(project(":feature:merge_split"))
+    implementation(project(":feature:compression"))
+    implementation(project(":feature:conversion"))
 
+    implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     implementation(libs.hilt.android)
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
     kapt(libs.hilt.compiler)
-    implementation(libs.workmanager-ktx)
+    implementation(libs.workmanager.ktx)
     implementation(libs.navigation.compose)
 }

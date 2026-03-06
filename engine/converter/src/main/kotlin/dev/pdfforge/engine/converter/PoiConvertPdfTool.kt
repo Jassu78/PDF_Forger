@@ -3,7 +3,7 @@ package dev.pdfforge.engine.converter
 import android.net.Uri
 import dev.pdfforge.data.impl.SafFileAdapter
 import dev.pdfforge.data.storage.TempFileManager
-import dev.pdfforge.domain.core.OperationResult
+import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.core.ValidationResult
 import dev.pdfforge.domain.core.tools.ConvertPdfParams
 import dev.pdfforge.domain.core.tools.ConvertPdfTool
@@ -38,7 +38,7 @@ class PoiConvertPdfTool @Inject constructor(
             run.setText("Converted from PDF using PDFForge Offline Engine.")
             
             // 4. Save the document
-            FileOutputStream(tempFile).use { out ->
+            FileOutputStream(tempFile).use { out: FileOutputStream ->
                 document.write(out)
             }
             

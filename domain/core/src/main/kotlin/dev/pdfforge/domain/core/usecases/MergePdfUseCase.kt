@@ -1,9 +1,10 @@
 package dev.pdfforge.domain.core.usecases
 
 import android.net.Uri
-import dev.pdfforge.domain.core.OperationResult
 import dev.pdfforge.domain.core.tools.MergePdfParams
 import dev.pdfforge.domain.core.tools.MergePdfTool
+import dev.pdfforge.domain.models.ErrorCode
+import dev.pdfforge.domain.models.OperationResult
 import javax.inject.Inject
 
 /**
@@ -16,9 +17,11 @@ class MergePdfUseCase @Inject constructor(
     suspend operator fun invoke(params: MergePdfParams): OperationResult<Uri> {
         val validation = mergePdfTool.validate(params)
         if (!validation.isValid) {
-            // Error handling for validation
+            return OperationResult.Error(
+                code = ErrorCode.INSUFFICIENT_INPUT,
+                message = "Validation failed: at least two PDFs are required to merge."
+            )
         }
-        
         return mergePdfTool.execute(params)
     }
 }
