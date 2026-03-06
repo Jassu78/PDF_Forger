@@ -37,6 +37,7 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
+    implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
     implementation(libs.navigation.compose)

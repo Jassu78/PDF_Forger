@@ -26,6 +26,9 @@ import dev.pdfforge.feature.merge_split.ReorderPagesScreen
 import dev.pdfforge.feature.merge_split.ReorderPagesViewModel
 import dev.pdfforge.feature.merge_split.SplitPdfScreen
 import dev.pdfforge.feature.merge_split.SplitPdfViewModel
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import dev.pdfforge.feature.pdf_creation.ImageToPdfResultScreen
 import dev.pdfforge.feature.pdf_creation.ImageToPdfScreen
 import dev.pdfforge.feature.pdf_creation.ImageToPdfViewModel
 
@@ -66,6 +69,20 @@ class MainActivity : ComponentActivity() {
                             val viewModel: ImageToPdfViewModel = hiltViewModel()
                             ImageToPdfScreen(
                                 viewModel = viewModel,
+                                onBackClick = { navController.popBackStack() },
+                                onPdfCreated = { uri ->
+                                    navController.navigate("image_to_pdf_result/${android.net.Uri.encode(uri.toString())}")
+                                }
+                            )
+                        }
+
+                        composable(
+                            route = Screen.ImageToPdfResult.route,
+                            arguments = listOf(navArgument("pdfUri") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val pdfUri = backStackEntry.arguments?.getString("pdfUri")
+                            ImageToPdfResultScreen(
+                                pdfUriString = pdfUri,
                                 onBackClick = { navController.popBackStack() }
                             )
                         }

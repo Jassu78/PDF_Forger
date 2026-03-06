@@ -31,10 +31,17 @@ class MuPdfImageToPdfTool @Inject constructor(
 
         try {
             for (uri in params.imageUris) {
-                val imageBytes = MuPdfHelper.readUriToBytes(context, uri)
+                var imageBytes = MuPdfHelper.readImageBytesForPdf(context, uri)
                     ?: return OperationResult.Error(ErrorCode.FILE_NOT_FOUND, "Cannot read image: ${uri.path}")
 
-                val image = Image(imageBytes)
+                var image = try { Image(imageBytes) } catch (_: Exception) {
+                    MuPdfHelper.decodeUriToPngBytes(context, uri)?.let { png ->
+                        imageBytes = png; Image(png)
+                    } ?: return OperationResult.Error(
+                        ErrorCode.FILE_NOT_FOUND,
+                        "Unsupported image format or cannot decode: ${uri.path}"
+                    )
+                }
                 val imgW = image.width.toFloat()
                 val imgH = image.height.toFloat()
 
