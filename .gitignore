@@ -1,15 +1,87 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# PDF Forger — Android Kotlin NDK project
+# Covers: Gradle, Android Studio/IntelliJ, Kotlin, NDK/CMake, OS cruft
+
+# -----------------------------------------------------------------------------
+# Gradle
+# -----------------------------------------------------------------------------
+.gradle/
+build/
+
+# -----------------------------------------------------------------------------
+# Local configuration (machine-specific, must not be committed)
+# -----------------------------------------------------------------------------
 local.properties
+
+# -----------------------------------------------------------------------------
+# Android Studio / IntelliJ IDEA
+# -----------------------------------------------------------------------------
+*.iml
+.idea/
+out/
+
+# Keep code style / inspection profiles if you want to share (uncomment to ignore)
+# .idea/codeStyles/
+# .idea/inspectionProfiles/
+
+# -----------------------------------------------------------------------------
+# Android build outputs & native
+# -----------------------------------------------------------------------------
+*.apk
+*.apk_
+*.aab
+*.apks
+*.dex
+captures/
+output.json
+.externalNativeBuild/
+.cxx/
+
+# NDK/CMake (standalone CMake build dirs if used)
+cmake-build-*/
+obj/
+
+# -----------------------------------------------------------------------------
+# Kotlin / JVM
+# -----------------------------------------------------------------------------
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.log
+hs_err_pid*
+replay_pid*
+
+# -----------------------------------------------------------------------------
+# Secrets & signing (never commit)
+# -----------------------------------------------------------------------------
+*.jks
+*.keystore
+google-services.json
+*.p12
+key.properties
+
+# Crashlytics / Fabric (if added later)
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+com_crashlytics_export_strings.xml
+
+# -----------------------------------------------------------------------------
+# Profiling & temp
+# -----------------------------------------------------------------------------
+*.hprof
+.mtj.tmp/
+
+# -----------------------------------------------------------------------------
+# OS
+# -----------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# -----------------------------------------------------------------------------
+# Android patch / legacy
+# -----------------------------------------------------------------------------
+gen-external-apklibs
