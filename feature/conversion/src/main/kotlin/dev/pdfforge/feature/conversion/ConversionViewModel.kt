@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 enum class OutputFormat {
-    DOCX, PPTX, IMAGES, TXT
+    DOCX, PPTX, IMAGES, TXT, MD
 }
 
 data class ConversionUiState(
@@ -70,6 +70,11 @@ class ConversionViewModel @Inject constructor(
         val currentState = _uiState.value
         val file = currentState.selectedFile ?: return
 
+        if (currentState.selectedFormat == OutputFormat.PPTX) {
+            _uiState.update { it.copy(error = "PPTX export coming in future") }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { 
                 it.copy(
@@ -86,6 +91,7 @@ class ConversionViewModel @Inject constructor(
                 OutputFormat.PPTX -> "pptx"
                 OutputFormat.TXT -> "txt"
                 OutputFormat.IMAGES -> "zip"
+                OutputFormat.MD -> "md"
             }
             val params = ConvertPdfParams(
                 sourceUri = file.uri,

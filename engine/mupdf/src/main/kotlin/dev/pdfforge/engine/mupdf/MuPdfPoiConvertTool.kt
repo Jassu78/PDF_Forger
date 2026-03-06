@@ -2,6 +2,7 @@ package dev.pdfforge.engine.mupdf
 
 import android.content.Context
 import android.net.Uri
+import com.artifex.mupdf.fitz.ColorSpace
 import com.artifex.mupdf.fitz.Document
 import com.artifex.mupdf.fitz.Image
 import com.artifex.mupdf.fitz.Matrix
@@ -19,6 +20,8 @@ import org.apache.poi.xwpf.usermodel.UnderlinePatterns
 import org.apache.poi.xwpf.usermodel.XWPFDocument
 import java.io.ByteArrayInputStream
 import java.io.FileOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,6 +31,8 @@ private const val FLAG_STRIKEOUT = 1
 private const val FLAG_UNDERLINE = 2
 private const val FLAG_SYNTHETIC = 4  // italic/fake-italic
 private const val FLAG_BOLD = 8
+
+private val SUPPORTED_FORMATS = setOf("DOCX", "TXT", "IMAGES", "MD")
 
 @Singleton
 class MuPdfPoiConvertTool @Inject constructor(
@@ -41,10 +46,11 @@ class MuPdfPoiConvertTool @Inject constructor(
     override val category = dev.pdfforge.domain.core.ToolCategory.CONVERSION
 
     override suspend fun execute(params: ConvertPdfParams): OperationResult<Uri> {
-        if (params.targetFormat.uppercase() != "DOCX") {
+        val format = params.targetFormat.uppercase()
+        if (format !in SUPPORTED_FORMATS) {
             return OperationResult.Error(
                 ErrorCode.ENGINE_INTERNAL_ERROR,
-                "${params.targetFormat} export is not yet implemented. Use DOCX for now."
+                "$format export is not supported."
             )
         }
         val tempInput = MuPdfHelper.copyUriToTempFile(context, params.sourceUri, tempFileManager)
@@ -52,25 +58,15 @@ class MuPdfPoiConvertTool @Inject constructor(
 
         try {
             val doc = Document.openDocument(tempInput.absolutePath)
-            val pageCount = doc.countPages()
-            val wordDoc = XWPFDocument()
-
-            for (i in 0 until pageCount) {
-                val page = doc.loadPage(i)
-                val stext = page.toStructuredText("preserve-images")
-                val walker = DocxBuilderWalker(wordDoc)
-                stext.walk(walker)
-                stext.destroy()
-                page.destroy()
+            val result = when (format) {
+                "DOCX" -> executeDocx(doc, params)
+                "TXT" -> executeTxt(doc, params)
+                "IMAGES" -> executeImages(doc, params)
+                "MD" -> executeMd(doc, params)
+                else -> OperationResult.Error(ErrorCode.ENGINE_INTERNAL_ERROR, "Unsupported format")
             }
-
-            val outputFile = tempFileManager.createOutputFile(params.outputName)
-            FileOutputStream(outputFile).use { out ->
-                wordDoc.write(out)
-            }
-
             doc.destroy()
-            return OperationResult.Success(Uri.fromFile(outputFile))
+            return result
         } catch (e: Exception) {
             return OperationResult.Error(ErrorCode.ENGINE_INTERNAL_ERROR, e.message ?: "Conversion failed", e)
         } finally {
@@ -78,11 +74,154 @@ class MuPdfPoiConvertTool @Inject constructor(
         }
     }
 
-    override fun validate(params: ConvertPdfParams): ValidationResult {
-        return ValidationResult(true)
+    private fun executeDocx(doc: Document, params: ConvertPdfParams): OperationResult<Uri> {
+        val pageCount = doc.countPages()
+        val wordDoc = XWPFDocument()
+        for (i in 0 until pageCount) {
+            val page = doc.loadPage(i)
+            val stext = page.toStructuredText("preserve-images")
+            val walker = DocxBuilderWalker(wordDoc)
+            stext.walk(walker)
+            stext.destroy()
+            page.destroy()
+        }
+        val outputFile = tempFileManager.createOutputFile(params.outputName)
+        FileOutputStream(outputFile).use { wordDoc.write(it) }
+        return OperationResult.Success(Uri.fromFile(outputFile))
     }
 
+    private fun executeTxt(doc: Document, params: ConvertPdfParams): OperationResult<Uri> {
+        val sb = StringBuilder()
+        val pageCount = doc.countPages()
+        for (i in 0 until pageCount) {
+            val page = doc.loadPage(i)
+            val stext = page.toStructuredText()
+            sb.append(stext.asText())
+            if (i < pageCount - 1) sb.append("\n\n--- Page ${i + 2} ---\n\n")
+            stext.destroy()
+            page.destroy()
+        }
+        val outputFile = tempFileManager.createOutputFile(params.outputName)
+        outputFile.writeText(sb.toString())
+        return OperationResult.Success(Uri.fromFile(outputFile))
+    }
+
+    private fun executeMd(doc: Document, params: ConvertPdfParams): OperationResult<Uri> {
+        val pageCount = doc.countPages()
+        val mdBuilder = MdBuilder()
+        for (i in 0 until pageCount) {
+            val page = doc.loadPage(i)
+            val stext = page.toStructuredText("preserve-images")
+            stext.walk(mdBuilder)
+            if (i < pageCount - 1) mdBuilder.append("\n\n---\n\n")
+            stext.destroy()
+            page.destroy()
+        }
+        val outputFile = tempFileManager.createOutputFile(params.outputName)
+        outputFile.writeText(mdBuilder.build())
+        return OperationResult.Success(Uri.fromFile(outputFile))
+    }
+
+    private fun executeImages(doc: Document, params: ConvertPdfParams): OperationResult<Uri> {
+        val pageCount = doc.countPages()
+        val matrix = Matrix(2f, 2f)
+        val outputFile = tempFileManager.createOutputFile(params.outputName)
+        ZipOutputStream(FileOutputStream(outputFile)).use { zos ->
+            for (i in 0 until pageCount) {
+                val page = doc.loadPage(i)
+                val pixmap = page.toPixmap(matrix, ColorSpace.DeviceRGB, false)
+                val buf = try { pixmap.asPNG() } catch (_: Exception) { pixmap.asJPEG(90, false) }
+                val bytes = buf.asByteArray()
+                buf.destroy()
+                pixmap.destroy()
+                page.destroy()
+                zos.putNextEntry(ZipEntry("page_${(i + 1).toString().padStart(3, '0')}.png"))
+                zos.write(bytes)
+                zos.closeEntry()
+            }
+        }
+        return OperationResult.Success(Uri.fromFile(outputFile))
+    }
+
+    override fun validate(params: ConvertPdfParams): ValidationResult = ValidationResult(true)
     override fun cancel() {}
+}
+
+private class MdBuilder : StructuredTextWalker {
+    private val sb = StringBuilder()
+    private val lineSpans = mutableListOf<FormatSpan>()
+    private var currentSpan: FormatSpan? = null
+
+    fun append(text: String) { sb.append(text) }
+
+    fun build(): String = sb.toString()
+
+    override fun beginTextBlock(bbox: Rect?) {
+        lineSpans.clear()
+        currentSpan = null
+    }
+
+    override fun endTextBlock() { flushLine() }
+
+    override fun beginLine(bbox: Rect?, wmode: Int, dir: com.artifex.mupdf.fitz.Point?) {
+        flushLine()
+        lineSpans.clear()
+        currentSpan = null
+    }
+
+    override fun endLine() {}
+
+    private fun flushLine() {
+        currentSpan?.let { if (it.chars.isNotEmpty()) lineSpans.add(it) }
+        currentSpan = null
+        if (lineSpans.isEmpty()) return
+        for (span in lineSpans) {
+            if (span.chars.isEmpty()) continue
+            val text = buildString { for (c in span.chars) append(Character.toChars(c)) }
+            when {
+                span.bold && span.italic -> sb.append("***").append(text).append("***")
+                span.bold -> sb.append("**").append(text).append("**")
+                span.italic -> sb.append("*").append(text).append("*")
+                span.underline -> sb.append("_").append(text).append("_")
+                else -> sb.append(text)
+            }
+        }
+        sb.append("\n")
+        lineSpans.clear()
+    }
+
+    override fun onChar(c: Int, origin: com.artifex.mupdf.fitz.Point?, font: com.artifex.mupdf.fitz.Font?, size: Float, quad: com.artifex.mupdf.fitz.Quad?, argb: Int, flags: Int) {
+        val bold = (flags and FLAG_BOLD) != 0 || font?.isBold == true
+        val italic = (flags and FLAG_SYNTHETIC) != 0 || font?.isItalic == true
+        val underline = (flags and FLAG_UNDERLINE) != 0
+        val fontSize = if (size > 0) size else 11f
+        val span = currentSpan
+        val formatMatches = span != null && span.bold == bold && span.italic == italic &&
+            span.underline == underline && kotlin.math.abs(span.fontSize - fontSize) < 0.5f
+        if (!formatMatches) {
+            span?.let { if (it.chars.isNotEmpty()) lineSpans.add(it) }
+            currentSpan = FormatSpan(mutableListOf(c), bold, italic, underline, fontSize)
+        } else {
+            span!!.chars.add(c)
+        }
+    }
+
+    override fun onImageBlock(bbox: Rect?, transform: Matrix?, image: Image?) {
+        flushLine()
+        if (bbox == null || image == null) return
+        try {
+            val pixmap = image.toPixmap()
+            val buf = try { pixmap.asPNG() } catch (_: Exception) { pixmap.asJPEG(85, false) }
+            val b64 = java.util.Base64.getEncoder().encodeToString(buf.asByteArray())
+            buf.destroy()
+            pixmap.destroy()
+            sb.append("![image](data:image/png;base64,").append(b64).append(")\n")
+        } catch (_: Exception) {}
+    }
+
+    override fun beginStruct(standard: String?, raw: String?, index: Int) {}
+    override fun endStruct() {}
+    override fun onVector(bbox: Rect?, info: com.artifex.mupdf.fitz.StructuredTextWalker.VectorInfo?, argb: Int) {}
 }
 
 private data class FormatSpan(

@@ -123,6 +123,7 @@ class MainActivity : ComponentActivity() {
                                         OutputFormat.PPTX -> "pptx"
                                         OutputFormat.TXT -> "txt"
                                         OutputFormat.IMAGES -> "zip"
+                                        OutputFormat.MD -> "md"
                                     }
                                     navController.navigate("document_result/${android.net.Uri.encode(uri.toString())}/$mimeKey")
                                 }

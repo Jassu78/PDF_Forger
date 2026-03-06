@@ -33,7 +33,7 @@ class TempFileManager @Inject constructor(
         return File(tempDir, fileName)
     }
 
-    private val knownExtensions = setOf(".pdf", ".docx", ".pptx", ".txt", ".png", ".jpg", ".jpeg", ".zip")
+    private val knownExtensions = setOf(".pdf", ".docx", ".pptx", ".txt", ".md", ".png", ".jpg", ".jpeg", ".zip")
 
     /**
      * Creates a persistent output file for user-facing outputs. Use for final outputs
