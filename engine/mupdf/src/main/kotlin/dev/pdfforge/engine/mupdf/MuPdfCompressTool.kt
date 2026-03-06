@@ -43,7 +43,7 @@ class MuPdfCompressTool @Inject constructor(
                 }
             }
 
-            val outputFile = tempFileManager.createTempFile(".pdf")
+            val outputFile = tempFileManager.createOutputFile(params.outputName)
             pdfDoc.save(outputFile.absolutePath, saveOpts)
             doc.destroy()
 

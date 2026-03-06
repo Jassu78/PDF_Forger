@@ -28,7 +28,7 @@ import dev.pdfforge.feature.merge_split.SplitPdfScreen
 import dev.pdfforge.feature.merge_split.SplitPdfViewModel
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
-import dev.pdfforge.feature.pdf_creation.ImageToPdfResultScreen
+import dev.pdfforge.common.ui.components.PdfResultScreen
 import dev.pdfforge.feature.pdf_creation.ImageToPdfScreen
 import dev.pdfforge.feature.pdf_creation.ImageToPdfViewModel
 
@@ -71,18 +71,19 @@ class MainActivity : ComponentActivity() {
                                 viewModel = viewModel,
                                 onBackClick = { navController.popBackStack() },
                                 onPdfCreated = { uri ->
-                                    navController.navigate("image_to_pdf_result/${android.net.Uri.encode(uri.toString())}")
+                                    navController.navigate("pdf_result/${android.net.Uri.encode(uri.toString())}")
                                 }
                             )
                         }
 
                         composable(
-                            route = Screen.ImageToPdfResult.route,
+                            route = Screen.PdfResult.route,
                             arguments = listOf(navArgument("pdfUri") { type = NavType.StringType })
                         ) { backStackEntry ->
                             val pdfUri = backStackEntry.arguments?.getString("pdfUri")
-                            ImageToPdfResultScreen(
+                            PdfResultScreen(
                                 pdfUriString = pdfUri,
+                                title = "PDF Created",
                                 onBackClick = { navController.popBackStack() }
                             )
                         }
@@ -91,7 +92,10 @@ class MainActivity : ComponentActivity() {
                             val viewModel: MergePdfViewModel = hiltViewModel()
                             MergePdfScreen(
                                 viewModel = viewModel,
-                                onBackClick = { navController.popBackStack() }
+                                onBackClick = { navController.popBackStack() },
+                                onPdfCreated = { uri ->
+                                    navController.navigate("pdf_result/${android.net.Uri.encode(uri.toString())}")
+                                }
                             )
                         }
 
@@ -99,7 +103,10 @@ class MainActivity : ComponentActivity() {
                             val viewModel: CompressionViewModel = hiltViewModel()
                             CompressionScreen(
                                 viewModel = viewModel,
-                                onBackClick = { navController.popBackStack() }
+                                onBackClick = { navController.popBackStack() },
+                                onPdfCreated = { uri ->
+                                    navController.navigate("pdf_result/${android.net.Uri.encode(uri.toString())}")
+                                }
                             )
                         }
 
@@ -114,14 +121,20 @@ class MainActivity : ComponentActivity() {
                             val viewModel: SplitPdfViewModel = hiltViewModel()
                             SplitPdfScreen(
                                 viewModel = viewModel,
-                                onBackClick = { navController.popBackStack() }
+                                onBackClick = { navController.popBackStack() },
+                                onPdfCreated = { uri ->
+                                    navController.navigate("pdf_result/${android.net.Uri.encode(uri.toString())}")
+                                }
                             )
                         }
                         composable(Screen.ReorderPages.route) {
                             val viewModel: ReorderPagesViewModel = hiltViewModel()
                             ReorderPagesScreen(
                                 viewModel = viewModel,
-                                onBackClick = { navController.popBackStack() }
+                                onBackClick = { navController.popBackStack() },
+                                onPdfCreated = { uri ->
+                                    navController.navigate("pdf_result/${android.net.Uri.encode(uri.toString())}")
+                                }
                             )
                         }
                     }

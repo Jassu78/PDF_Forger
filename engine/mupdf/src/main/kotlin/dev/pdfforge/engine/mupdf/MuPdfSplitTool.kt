@@ -48,7 +48,7 @@ class MuPdfSplitTool @Inject constructor(
                 }
             }
 
-            val outputFile = tempFileManager.createTempFile(".pdf")
+            val outputFile = tempFileManager.createOutputFile(params.outputName)
             destDoc.save(outputFile.absolutePath, "compress")
 
             destDoc.destroy()

@@ -30,4 +30,6 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     implementation(libs.navigation.compose)
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.compose.material:material-icons-extended")
 }
