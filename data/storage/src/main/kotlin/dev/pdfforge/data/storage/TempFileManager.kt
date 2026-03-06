@@ -7,8 +7,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Manages temporary files used during PDF processing.
- * Ensures that intermediate files are cleaned up to prevent storage bloat.
+ * Manages temporary and output files used during PDF processing.
+ * Temporary files go to cache (cleaned up by system). Output files go to a persistent directory.
  */
 @Singleton
 class TempFileManager @Inject constructor(
@@ -20,6 +20,10 @@ class TempFileManager @Inject constructor(
         }
     }
 
+    /** Persistent output directory for created PDFs (e.g. Image-to-PDF, Merge). */
+    val outputDir: File
+        get() = File(context.filesDir, "output").apply { if (!exists()) mkdirs() }
+
     /**
      * Creates a new temporary file with a unique name.
      * @param suffix The file extension (e.g., ".pdf", ".jpg").
@@ -27,6 +31,19 @@ class TempFileManager @Inject constructor(
     fun createTempFile(suffix: String = ".tmp"): File {
         val fileName = "temp_${UUID.randomUUID()}$suffix"
         return File(tempDir, fileName)
+    }
+
+    /**
+     * Creates a persistent output file for user-facing PDFs. Use this for final outputs
+     * (Image-to-PDF, Merge, etc.) so they survive cache cleanup and can be opened/shared.
+     * @param outputName Desired filename (e.g. "Export.pdf"); path separators are sanitized.
+     */
+    fun createOutputFile(outputName: String): File {
+        val safeName = outputName
+            .substringAfterLast('/')
+            .takeIf { it.isNotBlank() } ?: "output_${UUID.randomUUID()}.pdf"
+        val baseName = if (safeName.endsWith(".pdf")) safeName else "$safeName.pdf"
+        return File(outputDir, baseName)
     }
 
     /**

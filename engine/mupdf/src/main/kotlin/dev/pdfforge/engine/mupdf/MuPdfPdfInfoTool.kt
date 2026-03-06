@@ -27,7 +27,7 @@ class MuPdfPdfInfoTool @Inject constructor(
             doc.destroy()
             OperationResult.Success(count)
         } catch (e: Exception) {
-            OperationResult.Error(ErrorCode.CANNOT_OPEN_FILE, e.message, e)
+            OperationResult.Error(ErrorCode.CANNOT_OPEN_FILE, e.message ?: "Cannot open PDF", e)
         } finally {
             tempInput.delete()
         }

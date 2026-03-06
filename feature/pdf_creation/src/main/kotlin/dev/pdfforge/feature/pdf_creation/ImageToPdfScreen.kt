@@ -2,6 +2,7 @@ package dev.pdfforge.feature.pdf_creation
 
 import android.content.Intent
 import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -30,6 +31,26 @@ import coil.compose.AsyncImage
 import dev.pdfforge.common.ui.components.ProgressScreen
 import dev.pdfforge.common.ui.theme.PdfForgeTheme
 import dev.pdfforge.domain.core.tools.PageSize
+import java.io.File
+
+private fun openPdfWithViewer(context: android.content.Context, uri: Uri) {
+    val contentUri = when (uri.scheme) {
+        "file" -> {
+            val file = File(uri.path ?: return)
+            if (!file.exists()) return
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        }
+        else -> uri
+    }
+    val intent = Intent(Intent.ACTION_VIEW)
+        .setDataAndType(contentUri, "application/pdf")
+        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    try {
+        context.startActivity(Intent.createChooser(intent, "Open PDF"))
+    } catch (_: android.content.ActivityNotFoundException) {
+        // No PDF viewer installed
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,7 +86,7 @@ fun ImageToPdfScreen(
                 withDismissAction = true
             ).let { result ->
                 if (result == SnackbarResult.ActionPerformed) {
-                    context.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/pdf").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+                    openPdfWithViewer(context, uri)
                 }
             }
             viewModel.clearResult()

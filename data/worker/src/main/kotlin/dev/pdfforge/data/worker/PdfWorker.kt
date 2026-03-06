@@ -30,6 +30,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
+private val workerPayloadJson = Json { ignoreUnknownKeys = true }
+
 @HiltWorker
 class PdfWorker @AssistedInject constructor(
     @Assisted context: Context,
@@ -64,23 +66,23 @@ class PdfWorker @AssistedInject constructor(
 
         return@withContext when (opType) {
             OP_IMAGE_TO_PDF -> {
-                val payload = Json.decodeFromString<OperationPayload.ImageToPdf>(payloadJson)
+                val payload = workerPayloadJson.decodeFromString<OperationPayload.ImageToPdf>(payloadJson)
                 executeImageToPdf(payload)
             }
             OP_MERGE_PDF -> {
-                val payload = Json.decodeFromString<OperationPayload.MergePdf>(payloadJson)
+                val payload = workerPayloadJson.decodeFromString<OperationPayload.MergePdf>(payloadJson)
                 executeMergePdf(payload)
             }
             OP_COMPRESS_PDF -> {
-                val payload = Json.decodeFromString<OperationPayload.CompressPdf>(payloadJson)
+                val payload = workerPayloadJson.decodeFromString<OperationPayload.CompressPdf>(payloadJson)
                 executeCompressPdf(payload)
             }
             OP_SPLIT_PDF -> {
-                val payload = Json.decodeFromString<OperationPayload.SplitPdf>(payloadJson)
+                val payload = workerPayloadJson.decodeFromString<OperationPayload.SplitPdf>(payloadJson)
                 executeSplitPdf(payload)
             }
             OP_REORDER_PDF -> {
-                val payload = Json.decodeFromString<OperationPayload.ReorderPdf>(payloadJson)
+                val payload = workerPayloadJson.decodeFromString<OperationPayload.ReorderPdf>(payloadJson)
                 executeReorderPdf(payload)
             }
             else -> Result.failure()

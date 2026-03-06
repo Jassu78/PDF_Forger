@@ -67,7 +67,9 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.hilt.android)
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation("androidx.hilt:hilt-work:1.1.0")
     kapt(libs.hilt.compiler)
+    kapt("androidx.hilt:hilt-compiler:1.1.0")
     implementation(libs.workmanager.ktx)
     implementation(libs.navigation.compose)
 }

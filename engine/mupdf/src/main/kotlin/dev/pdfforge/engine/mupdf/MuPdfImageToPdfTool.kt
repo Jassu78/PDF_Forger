@@ -65,7 +65,7 @@ class MuPdfImageToPdfTool @Inject constructor(
                 pdfDoc.insertPage(-1, pageObj)
             }
 
-            val outputFile = tempFileManager.createTempFile(".pdf")
+            val outputFile = tempFileManager.createOutputFile(params.outputName)
             pdfDoc.save(outputFile.absolutePath, "compress-images")
 
             return OperationResult.Success(Uri.fromFile(outputFile))

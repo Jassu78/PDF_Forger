@@ -42,4 +42,5 @@ dependencies {
     implementation(libs.navigation.compose)
     implementation(libs.workmanager.ktx)
     implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("androidx.core:core-ktx:1.13.1")
 }
