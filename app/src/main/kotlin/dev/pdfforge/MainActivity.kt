@@ -28,7 +28,9 @@ import dev.pdfforge.feature.merge_split.SplitPdfScreen
 import dev.pdfforge.feature.merge_split.SplitPdfViewModel
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import dev.pdfforge.common.ui.components.DocumentResultScreen
 import dev.pdfforge.common.ui.components.PdfResultScreen
+import dev.pdfforge.feature.conversion.OutputFormat
 import dev.pdfforge.feature.pdf_creation.ImageToPdfScreen
 import dev.pdfforge.feature.pdf_creation.ImageToPdfViewModel
 
@@ -114,6 +116,32 @@ class MainActivity : ComponentActivity() {
                             val viewModel: ConversionViewModel = hiltViewModel()
                             ConversionScreen(
                                 viewModel = viewModel,
+                                onBackClick = { navController.popBackStack() },
+                                onDocumentCreated = { uri, format ->
+                                    val mimeKey = when (format) {
+                                        OutputFormat.DOCX -> "docx"
+                                        OutputFormat.PPTX -> "pptx"
+                                        OutputFormat.TXT -> "txt"
+                                        OutputFormat.IMAGES -> "zip"
+                                    }
+                                    navController.navigate("document_result/${android.net.Uri.encode(uri.toString())}/$mimeKey")
+                                }
+                            )
+                        }
+
+                        composable(
+                            route = Screen.DocumentResult.route,
+                            arguments = listOf(
+                                navArgument("documentUri") { type = NavType.StringType },
+                                navArgument("mimeKey") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val documentUri = backStackEntry.arguments?.getString("documentUri")
+                            val mimeKey = backStackEntry.arguments?.getString("mimeKey") ?: "docx"
+                            DocumentResultScreen(
+                                documentUriString = documentUri,
+                                mimeKey = mimeKey,
+                                title = "Conversion Complete",
                                 onBackClick = { navController.popBackStack() }
                             )
                         }

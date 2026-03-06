@@ -33,16 +33,23 @@ class TempFileManager @Inject constructor(
         return File(tempDir, fileName)
     }
 
+    private val knownExtensions = setOf(".pdf", ".docx", ".pptx", ".txt", ".png", ".jpg", ".jpeg", ".zip")
+
     /**
-     * Creates a persistent output file for user-facing PDFs. Use this for final outputs
-     * (Image-to-PDF, Merge, etc.) so they survive cache cleanup and can be opened/shared.
-     * @param outputName Desired filename (e.g. "Export.pdf"); path separators are sanitized.
+     * Creates a persistent output file for user-facing outputs. Use for final outputs
+     * (Image-to-PDF, Merge, Convert, etc.) so they survive cache cleanup and can be opened/shared.
+     * @param outputName Desired filename (e.g. "Export.pdf", "Converted.docx"); path separators sanitized.
+     *                   If no known extension, ".pdf" is appended.
      */
     fun createOutputFile(outputName: String): File {
         val safeName = outputName
             .substringAfterLast('/')
             .takeIf { it.isNotBlank() } ?: "output_${UUID.randomUUID()}.pdf"
-        val baseName = if (safeName.endsWith(".pdf")) safeName else "$safeName.pdf"
+        val baseName = if (knownExtensions.any { safeName.lowercase().endsWith(it) }) {
+            safeName
+        } else {
+            "$safeName.pdf"
+        }
         return File(outputDir, baseName)
     }
 

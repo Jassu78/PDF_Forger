@@ -27,6 +27,12 @@ class MuPdfPoiConvertTool @Inject constructor(
     override val category = dev.pdfforge.domain.core.ToolCategory.CONVERSION
 
     override suspend fun execute(params: ConvertPdfParams): OperationResult<Uri> {
+        if (params.targetFormat.uppercase() != "DOCX") {
+            return OperationResult.Error(
+                ErrorCode.ENGINE_INTERNAL_ERROR,
+                "${params.targetFormat} export is not yet implemented. Use DOCX for now."
+            )
+        }
         val tempInput = MuPdfHelper.copyUriToTempFile(context, params.sourceUri, tempFileManager)
             ?: return OperationResult.Error(ErrorCode.FILE_NOT_FOUND)
 
@@ -57,7 +63,7 @@ class MuPdfPoiConvertTool @Inject constructor(
                 page.destroy()
             }
 
-            val outputFile = tempFileManager.createTempFile(".docx")
+            val outputFile = tempFileManager.createOutputFile(params.outputName)
             FileOutputStream(outputFile).use { out ->
                 wordDoc.write(out)
             }

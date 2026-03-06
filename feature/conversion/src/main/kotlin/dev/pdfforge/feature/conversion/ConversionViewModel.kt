@@ -80,10 +80,17 @@ class ConversionViewModel @Inject constructor(
                 ) 
             }
             
+            val baseName = file.name.replace(Regex("\\.pdf$", RegexOption.IGNORE_CASE), "")
+            val ext = when (currentState.selectedFormat) {
+                OutputFormat.DOCX -> "docx"
+                OutputFormat.PPTX -> "pptx"
+                OutputFormat.TXT -> "txt"
+                OutputFormat.IMAGES -> "zip"
+            }
             val params = ConvertPdfParams(
                 sourceUri = file.uri,
                 targetFormat = currentState.selectedFormat.name,
-                outputName = "Converted_${file.name.removeSuffix(".pdf")}"
+                outputName = "Converted_$baseName.$ext"
             )
 
             // Simulating progress steps for Apache POI reconstruction
