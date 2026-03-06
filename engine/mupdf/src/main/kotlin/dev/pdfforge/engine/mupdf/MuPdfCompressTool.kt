@@ -1,8 +1,9 @@
 package dev.pdfforge.engine.mupdf
 
+import android.content.Context
 import android.net.Uri
-import android.os.ParcelFileDescriptor
-import dev.pdfforge.data.impl.SafFileAdapter
+import com.artifex.mupdf.fitz.Document
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.pdfforge.data.storage.TempFileManager
 import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.core.ValidationResult
@@ -14,53 +15,43 @@ import javax.inject.Singleton
 
 @Singleton
 class MuPdfCompressTool @Inject constructor(
-    private val safFileAdapter: SafFileAdapter,
+    @ApplicationContext private val context: Context,
     private val tempFileManager: TempFileManager
 ) : CompressPdfTool {
 
     override val id: String = "compress_pdf"
-    override val nameRes: Int = 0 
-    override val iconRes: Int = 0 
+    override val nameRes: Int = 0
+    override val iconRes: Int = 0
     override val category = dev.pdfforge.domain.core.ToolCategory.COMPRESSION
 
     override suspend fun execute(params: CompressPdfParams): OperationResult<Uri> {
-        val pfd = safFileAdapter.openFileDescriptor(params.sourceUri)
+        val tempInput = MuPdfHelper.copyUriToTempFile(context, params.sourceUri, tempFileManager)
             ?: return OperationResult.Error(ErrorCode.FILE_NOT_FOUND)
 
-        val docHandle = MuPdfJni.openFromFd(pfd.fd)
-        if (docHandle == 0L) {
-            pfd.close()
-            return OperationResult.Error(ErrorCode.CANNOT_OPEN_FILE)
-        }
-
         try {
-            val tempFile = tempFileManager.createTempFile(".pdf")
-            val outputPfd = ParcelFileDescriptor.open(
-                tempFile,
-                ParcelFileDescriptor.MODE_READ_WRITE
-            )
+            val doc = Document.openDocument(tempInput.absolutePath)
+            val pdfDoc = doc.asPDF()
+                ?: run {
+                    doc.destroy()
+                    return OperationResult.Error(ErrorCode.CANNOT_OPEN_FILE)
+                }
 
-            val success = MuPdfJni.optimizeDocument(
-                docHandle = docHandle,
-                outputFd = outputPfd.fd,
-                quality = params.strategy.imageQualityPercent,
-                targetDpi = params.strategy.targetDpi,
-                stripMetadata = params.strategy.removeMetadata,
-                fontSubsetting = params.strategy.fontSubsetting
-            )
-            
-            outputPfd.close()
-
-            return if (success) {
-                OperationResult.Success(Uri.fromFile(tempFile))
-            } else {
-                OperationResult.Error(ErrorCode.ENGINE_INTERNAL_ERROR, "Compression failed")
+            val saveOpts = buildString {
+                append("compress,compress-images,compress-fonts,garbage")
+                if (params.strategy.removeMetadata) {
+                    append(",clean")
+                }
             }
+
+            val outputFile = tempFileManager.createTempFile(".pdf")
+            pdfDoc.save(outputFile.absolutePath, saveOpts)
+            doc.destroy()
+
+            return OperationResult.Success(Uri.fromFile(outputFile))
         } catch (e: Exception) {
-            return OperationResult.Error(ErrorCode.ENGINE_INTERNAL_ERROR, e.message ?: "Unknown error", e)
+            return OperationResult.Error(ErrorCode.ENGINE_INTERNAL_ERROR, e.message ?: "Compression failed", e)
         } finally {
-            MuPdfJni.closeDocument(docHandle)
-            pfd.close()
+            tempInput.delete()
         }
     }
 
@@ -68,7 +59,5 @@ class MuPdfCompressTool @Inject constructor(
         return ValidationResult(true)
     }
 
-    override fun cancel() {
-        // Native cancellation
-    }
+    override fun cancel() {}
 }

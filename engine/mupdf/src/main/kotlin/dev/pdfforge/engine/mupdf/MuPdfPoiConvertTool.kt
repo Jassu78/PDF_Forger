@@ -1,7 +1,9 @@
 package dev.pdfforge.engine.mupdf
 
+import android.content.Context
 import android.net.Uri
-import dev.pdfforge.data.impl.SafFileAdapter
+import com.artifex.mupdf.fitz.Document
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.pdfforge.data.storage.TempFileManager
 import dev.pdfforge.domain.core.ValidationResult
 import dev.pdfforge.domain.core.tools.ConvertPdfParams
@@ -15,7 +17,7 @@ import javax.inject.Singleton
 
 @Singleton
 class MuPdfPoiConvertTool @Inject constructor(
-    private val safFileAdapter: SafFileAdapter,
+    @ApplicationContext private val context: Context,
     private val tempFileManager: TempFileManager
 ) : ConvertPdfTool {
 
@@ -25,44 +27,47 @@ class MuPdfPoiConvertTool @Inject constructor(
     override val category = dev.pdfforge.domain.core.ToolCategory.CONVERSION
 
     override suspend fun execute(params: ConvertPdfParams): OperationResult<Uri> {
-        val pfd = safFileAdapter.openFileDescriptor(params.sourceUri)
+        val tempInput = MuPdfHelper.copyUriToTempFile(context, params.sourceUri, tempFileManager)
             ?: return OperationResult.Error(ErrorCode.FILE_NOT_FOUND)
 
-        val docHandle = MuPdfJni.openFromFd(pfd.fd)
-        if (docHandle == 0L) {
-            pfd.close()
-            return OperationResult.Error(ErrorCode.CANNOT_OPEN_FILE)
-        }
+        try {
+            val doc = Document.openDocument(tempInput.absolutePath)
+            val pageCount = doc.countPages()
 
-        return try {
-            val tempFile = tempFileManager.createTempFile(".docx")
-            val doc = XWPFDocument()
-
-            val pageCount = MuPdfJni.getPageCount(docHandle)
+            val wordDoc = XWPFDocument()
 
             for (i in 0 until pageCount) {
-                val textBlocks = MuPdfJni.extractTextBlocks(docHandle, i)
+                val page = doc.loadPage(i)
+                val stext = page.toStructuredText()
+                val blocks = stext.getBlocks()
 
-                var lastY = -1f
-                var currentParagraph = doc.createParagraph()
-
-                textBlocks.forEach { block ->
-                    val run = currentParagraph.createRun()
-                    run.setText(block)
-                    run.addBreak()
+                for (block in blocks) {
+                    for (line in block.lines) {
+                        val paragraph = wordDoc.createParagraph()
+                        val run = paragraph.createRun()
+                        val lineText = buildString {
+                            for (ch in line.chars) {
+                                append(ch.c.toChar())
+                            }
+                        }
+                        run.setText(lineText)
+                    }
                 }
+                stext.destroy()
+                page.destroy()
             }
 
-            FileOutputStream(tempFile).use { out: FileOutputStream ->
-                doc.write(out)
+            val outputFile = tempFileManager.createTempFile(".docx")
+            FileOutputStream(outputFile).use { out ->
+                wordDoc.write(out)
             }
 
-            OperationResult.Success(Uri.fromFile(tempFile))
+            doc.destroy()
+            return OperationResult.Success(Uri.fromFile(outputFile))
         } catch (e: Exception) {
-            OperationResult.Error(ErrorCode.ENGINE_INTERNAL_ERROR, e.message ?: "Conversion failed", e)
+            return OperationResult.Error(ErrorCode.ENGINE_INTERNAL_ERROR, e.message ?: "Conversion failed", e)
         } finally {
-            MuPdfJni.closeDocument(docHandle)
-            pfd.close()
+            tempInput.delete()
         }
     }
 

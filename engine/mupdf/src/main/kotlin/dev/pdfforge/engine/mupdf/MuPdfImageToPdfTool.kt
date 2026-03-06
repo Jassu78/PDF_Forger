@@ -1,7 +1,11 @@
 package dev.pdfforge.engine.mupdf
 
+import android.content.Context
 import android.net.Uri
-import dev.pdfforge.data.impl.SafFileAdapter
+import com.artifex.mupdf.fitz.Image
+import com.artifex.mupdf.fitz.PDFDocument
+import com.artifex.mupdf.fitz.Rect
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.pdfforge.data.storage.TempFileManager
 import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.core.ValidationResult
@@ -13,68 +17,68 @@ import javax.inject.Singleton
 
 @Singleton
 class MuPdfImageToPdfTool @Inject constructor(
-    private val safFileAdapter: SafFileAdapter,
+    @ApplicationContext private val context: Context,
     private val tempFileManager: TempFileManager
 ) : ImageToPdfTool {
 
     override val id: String = "image_to_pdf"
-    override val nameRes: Int = 0 // Resource ID for name
-    override val iconRes: Int = 0 // Resource ID for icon
+    override val nameRes: Int = 0
+    override val iconRes: Int = 0
     override val category = dev.pdfforge.domain.core.ToolCategory.CREATION
 
     override suspend fun execute(params: ImageToPdfParams): OperationResult<Uri> {
-        val docHandle = MuPdfJni.createNewDocument()
-        if (docHandle == 0L) {
-            return OperationResult.Error(ErrorCode.ENGINE_INTERNAL_ERROR, "Failed to create PDF document")
-        }
+        val pdfDoc = PDFDocument()
 
         try {
-            params.imageUris.forEach { uri ->
-                val pfd = safFileAdapter.openFileDescriptor(uri)
-                if (pfd != null) {
-                    val success = MuPdfJni.addImagePage(
-                        docHandle = docHandle,
-                        imageFd = pfd.fd,
-                        quality = params.quality,
-                        width = 595, // A4 Width in points
-                        height = 842 // A4 Height in points
-                    )
-                    pfd.close()
-                    if (!success) {
-                        return OperationResult.Error(ErrorCode.ENGINE_INTERNAL_ERROR, "Failed to add image to PDF")
-                    }
-                }
+            for (uri in params.imageUris) {
+                val imageBytes = MuPdfHelper.readUriToBytes(context, uri)
+                    ?: return OperationResult.Error(ErrorCode.FILE_NOT_FOUND, "Cannot read image: ${uri.path}")
+
+                val image = Image(imageBytes)
+                val imgW = image.width.toFloat()
+                val imgH = image.height.toFloat()
+
+                // A4 in points: 595 x 842. Scale image to fit while preserving aspect ratio.
+                val pageW = 595f
+                val pageH = 842f
+                val scale = minOf(pageW / imgW, pageH / imgH)
+                val scaledW = imgW * scale
+                val scaledH = imgH * scale
+                val offsetX = (pageW - scaledW) / 2f
+                val offsetY = (pageH - scaledH) / 2f
+
+                val imgObj = pdfDoc.addImage(image)
+                image.destroy()
+
+                val resources = pdfDoc.newDictionary()
+                val xobjects = pdfDoc.newDictionary()
+                xobjects.put("Img0", imgObj)
+                resources.put("XObject", xobjects)
+
+                val contents = String.format(
+                    "q %.2f 0 0 %.2f %.2f %.2f cm /Img0 Do Q",
+                    scaledW, scaledH, offsetX, offsetY
+                )
+
+                val mediabox = Rect(0f, 0f, pageW, pageH)
+                val pageObj = pdfDoc.addPage(mediabox, 0, resources, contents)
+                pdfDoc.insertPage(-1, pageObj)
             }
 
-            // Save to a temporary file first
-            val tempFile = tempFileManager.createTempFile(".pdf")
-            val outputPfd = android.os.ParcelFileDescriptor.open(
-                tempFile,
-                android.os.ParcelFileDescriptor.MODE_READ_WRITE
-            )
-            
-            val saved = MuPdfJni.saveToFd(docHandle, outputPfd.fd)
-            outputPfd.close()
+            val outputFile = tempFileManager.createTempFile(".pdf")
+            pdfDoc.save(outputFile.absolutePath, "compress-images")
 
-            return if (saved) {
-                OperationResult.Success(Uri.fromFile(tempFile))
-            } else {
-                OperationResult.Error(ErrorCode.CANNOT_WRITE_FILE)
-            }
+            return OperationResult.Success(Uri.fromFile(outputFile))
+        } catch (e: Exception) {
+            return OperationResult.Error(ErrorCode.ENGINE_INTERNAL_ERROR, e.message ?: "Image-to-PDF failed", e)
         } finally {
-            MuPdfJni.closeDocument(docHandle)
+            pdfDoc.destroy()
         }
     }
 
     override fun validate(params: ImageToPdfParams): ValidationResult {
-        return if (params.imageUris.isEmpty()) {
-            ValidationResult(false)
-        } else {
-            ValidationResult(true)
-        }
+        return ValidationResult(params.imageUris.isNotEmpty())
     }
 
-    override fun cancel() {
-        // Cancellation logic for native engine
-    }
+    override fun cancel() {}
 }

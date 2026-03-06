@@ -1,12 +1,13 @@
 package dev.pdfforge.engine.mupdf
 
+import android.content.Context
 import android.net.Uri
-import android.os.ParcelFileDescriptor
-import dev.pdfforge.data.impl.SafFileAdapter
+import com.artifex.mupdf.fitz.Document
+import com.artifex.mupdf.fitz.PDFDocument
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.pdfforge.data.storage.TempFileManager
 import dev.pdfforge.domain.models.OperationResult
 import dev.pdfforge.domain.core.ValidationResult
-import dev.pdfforge.domain.core.tools.PageOrderItem
 import dev.pdfforge.domain.core.tools.ReorderPdfParams
 import dev.pdfforge.domain.core.tools.ReorderPdfTool
 import dev.pdfforge.domain.models.ErrorCode
@@ -15,7 +16,7 @@ import javax.inject.Singleton
 
 @Singleton
 class MuPdfReorderTool @Inject constructor(
-    private val safFileAdapter: SafFileAdapter,
+    @ApplicationContext private val context: Context,
     private val tempFileManager: TempFileManager
 ) : ReorderPdfTool {
 
@@ -25,54 +26,43 @@ class MuPdfReorderTool @Inject constructor(
     override val category = dev.pdfforge.domain.core.ToolCategory.OPERATIONS
 
     override suspend fun execute(params: ReorderPdfParams): OperationResult<Uri> {
-        val pfd = safFileAdapter.openFileDescriptor(params.sourceUri)
+        val tempInput = MuPdfHelper.copyUriToTempFile(context, params.sourceUri, tempFileManager)
             ?: return OperationResult.Error(ErrorCode.FILE_NOT_FOUND)
 
-        val srcDocHandle = MuPdfJni.openFromFd(pfd.fd)
-        if (srcDocHandle == 0L) {
-            pfd.close()
-            return OperationResult.Error(ErrorCode.CANNOT_OPEN_FILE)
-        }
-
-        val destDocHandle = MuPdfJni.createNewDocument()
-        if (destDocHandle == 0L) {
-            MuPdfJni.closeDocument(srcDocHandle)
-            pfd.close()
-            return OperationResult.Error(ErrorCode.ENGINE_INTERNAL_ERROR)
-        }
-
         try {
-            val srcPageCount = MuPdfJni.getPageCount(srcDocHandle)
-            var destPageIndex = 0
+            val srcDoc = Document.openDocument(tempInput.absolutePath)
+            val pdfSrc = srcDoc.asPDF()
+                ?: run {
+                    srcDoc.destroy()
+                    return OperationResult.Error(ErrorCode.CANNOT_OPEN_FILE)
+                }
+
+            val destDoc = PDFDocument()
+            val srcPageCount = pdfSrc.countPages()
+
             for (item in params.pageOrder) {
                 if (item.pageIndex !in 0 until srcPageCount) continue
-                val ok = MuPdfJni.copyPage(srcDocHandle, item.pageIndex, destDocHandle)
-                if (!ok) {
-                    MuPdfJni.closeDocument(srcDocHandle)
-                    MuPdfJni.closeDocument(destDocHandle)
-                    pfd.close()
-                    return OperationResult.Error(ErrorCode.ENGINE_INTERNAL_ERROR, "Failed to copy page ${item.pageIndex}")
-                }
+                destDoc.graftPage(-1, pdfSrc, item.pageIndex)
+
                 if (item.rotation != 0) {
-                    MuPdfJni.rotatePage(destDocHandle, destPageIndex, item.rotation)
+                    val destPageCount = destDoc.countPages()
+                    val pageObj = destDoc.findPage(destPageCount - 1)
+                    val currentRotation = pageObj.get("Rotate").asInteger()
+                    pageObj.put("Rotate", destDoc.newInteger((currentRotation + item.rotation) % 360))
                 }
-                destPageIndex++
             }
 
-            val tempFile = tempFileManager.createTempFile(".pdf")
-            val outputPfd = ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_WRITE)
-            val saved = MuPdfJni.saveToFd(destDocHandle, outputPfd.fd)
-            outputPfd.close()
+            val outputFile = tempFileManager.createTempFile(".pdf")
+            destDoc.save(outputFile.absolutePath, "compress")
 
-            return if (saved) {
-                OperationResult.Success(Uri.fromFile(tempFile))
-            } else {
-                OperationResult.Error(ErrorCode.CANNOT_WRITE_FILE)
-            }
+            destDoc.destroy()
+            srcDoc.destroy()
+
+            return OperationResult.Success(Uri.fromFile(outputFile))
+        } catch (e: Exception) {
+            return OperationResult.Error(ErrorCode.ENGINE_INTERNAL_ERROR, e.message ?: "Reorder failed", e)
         } finally {
-            MuPdfJni.closeDocument(srcDocHandle)
-            MuPdfJni.closeDocument(destDocHandle)
-            pfd.close()
+            tempInput.delete()
         }
     }
 

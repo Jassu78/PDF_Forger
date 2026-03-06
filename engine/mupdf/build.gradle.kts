@@ -11,21 +11,6 @@ android {
 
     defaultConfig {
         minSdk = 29
-        ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-        }
-        externalNativeBuild {
-            cmake {
-                cppFlags += "-std=c++17"
-            }
-        }
-    }
-
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
     }
 
     compileOptions {
@@ -44,5 +29,6 @@ dependencies {
     implementation(project(":data:storage"))
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
+    implementation("com.artifex.mupdf:fitz:1.27.1")
     implementation("org.apache.poi:poi-ooxml:5.2.5")
 }
