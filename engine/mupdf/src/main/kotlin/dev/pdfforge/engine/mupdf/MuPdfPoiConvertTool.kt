@@ -15,6 +15,7 @@ import dev.pdfforge.domain.core.tools.ConvertPdfTool
 import dev.pdfforge.domain.models.ErrorCode
 import dev.pdfforge.domain.models.OperationResult
 import org.apache.poi.util.Units
+import org.apache.poi.xwpf.usermodel.UnderlinePatterns
 import org.apache.poi.xwpf.usermodel.XWPFDocument
 import java.io.ByteArrayInputStream
 import java.io.FileOutputStream
@@ -22,6 +23,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val MAX_IMAGE_POINTS = 400f
+
+private const val FLAG_STRIKEOUT = 1
+private const val FLAG_UNDERLINE = 2
+private const val FLAG_SYNTHETIC = 4  // italic/fake-italic
+private const val FLAG_BOLD = 8
 
 @Singleton
 class MuPdfPoiConvertTool @Inject constructor(
@@ -79,14 +85,24 @@ class MuPdfPoiConvertTool @Inject constructor(
     override fun cancel() {}
 }
 
+private data class FormatSpan(
+    val chars: MutableList<Int> = mutableListOf(),
+    val bold: Boolean = false,
+    val italic: Boolean = false,
+    val underline: Boolean = false,
+    val fontSize: Float = 11f
+)
+
 private class DocxBuilderWalker(
     private val wordDoc: XWPFDocument
 ) : StructuredTextWalker {
 
-    private val lineChars = mutableListOf<Int>()
+    private val lineSpans = mutableListOf<FormatSpan>()
+    private var currentSpan: FormatSpan? = null
 
     override fun beginTextBlock(bbox: Rect?) {
-        lineChars.clear()
+        lineSpans.clear()
+        currentSpan = null
     }
 
     override fun endTextBlock() {
@@ -95,27 +111,51 @@ private class DocxBuilderWalker(
 
     override fun beginLine(bbox: Rect?, wmode: Int, dir: com.artifex.mupdf.fitz.Point?) {
         flushLine()
-        lineChars.clear()
+        lineSpans.clear()
+        currentSpan = null
     }
 
-    override fun endLine() {
-        // Line complete; flushLine will be called at next beginLine or endTextBlock
-    }
+    override fun endLine() {}
 
     private fun flushLine() {
-        if (lineChars.isEmpty()) return
+        currentSpan?.let { if (it.chars.isNotEmpty()) lineSpans.add(it) }
+        currentSpan = null
+        if (lineSpans.isEmpty()) return
         val paragraph = wordDoc.createParagraph()
-        val run = paragraph.createRun()
-        run.setText(buildString {
-            for (c in lineChars) {
-                append(Character.toChars(c))
-            }
-        })
-        lineChars.clear()
+        for (span in lineSpans) {
+            if (span.chars.isEmpty()) continue
+            val run = paragraph.createRun()
+            run.setText(buildString {
+                for (c in span.chars) {
+                    append(Character.toChars(c))
+                }
+            })
+            run.isBold = span.bold
+            run.isItalic = span.italic
+            if (span.underline) run.setUnderline(UnderlinePatterns.SINGLE)
+            if (span.fontSize > 0) run.fontSize = span.fontSize.toInt()
+        }
+        lineSpans.clear()
+        currentSpan = null
     }
 
     override fun onChar(c: Int, origin: com.artifex.mupdf.fitz.Point?, font: com.artifex.mupdf.fitz.Font?, size: Float, quad: com.artifex.mupdf.fitz.Quad?, argb: Int, flags: Int) {
-        lineChars.add(c)
+        val bold = (flags and FLAG_BOLD) != 0 || font?.isBold == true
+        val italic = (flags and FLAG_SYNTHETIC) != 0 || font?.isItalic == true
+        val underline = (flags and FLAG_UNDERLINE) != 0
+        val fontSize = if (size > 0) size else 11f
+
+        val span = currentSpan
+        val formatMatches = span != null &&
+            span.bold == bold && span.italic == italic &&
+            span.underline == underline && kotlin.math.abs(span.fontSize - fontSize) < 0.5f
+
+        if (!formatMatches) {
+            span?.let { if (it.chars.isNotEmpty()) lineSpans.add(it) }
+            currentSpan = FormatSpan(mutableListOf(c), bold, italic, underline, fontSize)
+        } else {
+            span!!.chars.add(c)
+        }
     }
 
     override fun onImageBlock(bbox: Rect?, transform: Matrix?, image: Image?) {
