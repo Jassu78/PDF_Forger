@@ -3,6 +3,7 @@ package dev.pdfforge.engine.converter
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
@@ -106,8 +107,11 @@ class DocxToPdfTool @Inject constructor(
             append("table{border-collapse:collapse;width:100%;margin:8px 0}")
             append("td,th{border:1px solid #888;padding:6px 8px;text-align:left;vertical-align:top}")
             append("th{background:#f0f0f0;font-weight:bold}")
-            append("img{max-width:100%;height:auto}")
-            append("p{margin:4px 0}")
+            append("img{max-width:100%;height:auto;page-break-inside:avoid;display:block;margin:8px 0}")
+            append("p{margin:4px 0;orphans:3;widows:3}")
+            append("h1,h2,h3,h4{page-break-after:avoid}")
+            append("tr{page-break-inside:avoid}")
+            append("table{page-break-inside:auto}")
             append(".align-center{text-align:center}")
             append(".align-right{text-align:right}")
             append(".align-justify{text-align:justify}")
@@ -282,6 +286,7 @@ class DocxToPdfTool @Inject constructor(
 
         val contentBitmap = Bitmap.createBitmap(PAGE_WIDTH_PX, totalHeight, Bitmap.Config.ARGB_8888)
         val bitmapCanvas = Canvas(contentBitmap)
+        bitmapCanvas.drawColor(Color.WHITE)
         webView.draw(bitmapCanvas)
 
         val attrs = PrintAttributes.Builder()
@@ -298,16 +303,27 @@ class DocxToPdfTool @Inject constructor(
         var yOffset = 0
         var pageNum = 0
         while (yOffset < totalHeight) {
+            val targetBreak = yOffset + scaledPageHeight
+            val actualBreak = if (targetBreak >= totalHeight) {
+                totalHeight
+            } else {
+                findBestPageBreak(contentBitmap, targetBreak, scaledPageHeight)
+            }
+
             val page = pdfDoc.startPage(pageNum)
             val canvas = page.canvas
             val scale = canvas.width.toFloat() / PAGE_WIDTH_PX.toFloat()
+            val sliceHeight = actualBreak - yOffset
+
             canvas.save()
+            canvas.clipRect(0f, 0f, canvas.width.toFloat(), sliceHeight * scale)
             canvas.scale(scale, scale)
             canvas.translate(0f, -yOffset.toFloat())
             canvas.drawBitmap(contentBitmap, 0f, 0f, null)
             canvas.restore()
             pdfDoc.finishPage(page)
-            yOffset += scaledPageHeight
+
+            yOffset = actualBreak
             pageNum++
         }
 
@@ -315,6 +331,49 @@ class DocxToPdfTool @Inject constructor(
 
         FileOutputStream(outputPath).use { pdfDoc.writeTo(it) }
         pdfDoc.close()
+    }
+
+    /**
+     * Scans a region above [targetY] in the bitmap to find the best horizontal
+     * break point — the row with the most white/background pixels, indicating
+     * a gap between content blocks (paragraphs, images, table rows).
+     */
+    private fun findBestPageBreak(bitmap: Bitmap, targetY: Int, pageHeight: Int): Int {
+        val searchMargin = (pageHeight * 0.12).toInt()
+        val searchEnd = targetY.coerceAtMost(bitmap.height - 1)
+        val searchStart = (targetY - searchMargin).coerceAtLeast(0)
+
+        if (searchStart >= searchEnd) return targetY.coerceAtMost(bitmap.height)
+
+        val sampleCount = 40
+        val step = (bitmap.width / sampleCount).coerceAtLeast(1)
+
+        var bestY = searchEnd
+        var bestScore = -1
+
+        for (y in searchEnd downTo searchStart) {
+            var whitePixels = 0
+            var x = 0
+            while (x < bitmap.width) {
+                val pixel = bitmap.getPixel(x, y)
+                val r = Color.red(pixel)
+                val g = Color.green(pixel)
+                val b = Color.blue(pixel)
+                if (r > 230 && g > 230 && b > 230) whitePixels++
+                x += step
+            }
+
+            if (whitePixels >= sampleCount) {
+                return y
+            }
+
+            if (whitePixels > bestScore) {
+                bestScore = whitePixels
+                bestY = y
+            }
+        }
+
+        return bestY
     }
 
     override fun validate(params: DocumentToPdfParams): ValidationResult = ValidationResult(true)
