@@ -18,6 +18,8 @@ import dev.pdfforge.feature.compression.CompressionScreen
 import dev.pdfforge.feature.compression.CompressionViewModel
 import dev.pdfforge.feature.conversion.ConversionScreen
 import dev.pdfforge.feature.conversion.ConversionViewModel
+import dev.pdfforge.feature.conversion.DocumentToPdfScreen
+import dev.pdfforge.feature.conversion.DocumentToPdfViewModel
 import dev.pdfforge.feature.home.HomeScreen
 import dev.pdfforge.feature.home.HomeViewModel
 import dev.pdfforge.feature.merge_split.MergePdfScreen
@@ -60,6 +62,7 @@ class MainActivity : ComponentActivity() {
                                         "merge_pdf" -> navController.navigate(Screen.MergePdf.route)
                                         "compress_pdf" -> navController.navigate(Screen.CompressPdf.route)
                                         "convert_pdf" -> navController.navigate(Screen.ConvertPdf.route)
+                                        "doc_to_pdf" -> navController.navigate(Screen.DocToPdf.route)
                                         "split_pdf" -> navController.navigate(Screen.SplitPdf.route)
                                         "reorder_pages" -> navController.navigate(Screen.ReorderPages.route)
                                     }
@@ -105,6 +108,17 @@ class MainActivity : ComponentActivity() {
                             val viewModel: CompressionViewModel = hiltViewModel()
                             CompressionScreen(
                                 viewModel = viewModel,
+                                onBackClick = { navController.popBackStack() },
+                                onPdfCreated = { uri ->
+                                    navController.navigate("pdf_result/${android.net.Uri.encode(uri.toString())}")
+                                }
+                            )
+                        }
+
+                        composable(Screen.DocToPdf.route) {
+                            val docToPdfVm: DocumentToPdfViewModel = hiltViewModel()
+                            DocumentToPdfScreen(
+                                viewModel = docToPdfVm,
                                 onBackClick = { navController.popBackStack() },
                                 onPdfCreated = { uri ->
                                     navController.navigate("pdf_result/${android.net.Uri.encode(uri.toString())}")

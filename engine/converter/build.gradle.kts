@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.hilt)
+    id("kotlin-kapt")
 }
 
 android {
@@ -25,6 +27,7 @@ dependencies {
     implementation(project(":domain:core"))
     implementation(project(":data:impl"))
     implementation(project(":data:storage"))
-    implementation("javax.inject:javax.inject:1")
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
     implementation("org.apache.poi:poi-ooxml:5.2.5")
 }

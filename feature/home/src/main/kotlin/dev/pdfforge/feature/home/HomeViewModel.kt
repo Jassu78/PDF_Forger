@@ -37,6 +37,7 @@ class HomeViewModel @Inject constructor() : ViewModel() {
                 ToolItem("merge_pdf", "Merge PDFs", "Combine multiple PDFs into one", ToolCategory.OPERATIONS, 0xFFBC8CFF),
                 ToolItem("compress_pdf", "Compress PDF", "Reduce PDF file size", ToolCategory.COMPRESSION, 0xFF3FB950),
                 ToolItem("convert_pdf", "Convert PDF", "Convert PDF to other formats", ToolCategory.CONVERSION, 0xFFF0883E),
+                ToolItem("doc_to_pdf", "Doc to PDF", "Convert Word to PDF", ToolCategory.CONVERSION, 0xFF58A6FF),
                 ToolItem("split_pdf", "Split PDF", "Extract pages from a PDF", ToolCategory.OPERATIONS, 0xFF39D353),
                 ToolItem("reorder_pages", "Reorder Pages", "Rotate or rearrange pages", ToolCategory.OPERATIONS, 0xFFFF7B72)
             )

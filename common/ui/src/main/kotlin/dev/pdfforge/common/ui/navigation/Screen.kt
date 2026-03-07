@@ -3,6 +3,7 @@ package dev.pdfforge.common.ui.navigation
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
     data object ImageToPdf : Screen("image_to_pdf")
+    data object DocToPdf : Screen("doc_to_pdf")
     data object ImageToPdfResult : Screen("image_to_pdf_result/{pdfUri}")
     data object PdfResult : Screen("pdf_result/{pdfUri}")
     data object MergePdf : Screen("merge_pdf")

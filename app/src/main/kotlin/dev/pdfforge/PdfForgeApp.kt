@@ -5,6 +5,7 @@ import android.os.StrictMode
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import androidx.work.WorkManager
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader // pdfbox-android init for glyphlist/resources
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -21,6 +22,7 @@ class PdfForgeApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        PDFBoxResourceLoader.init(applicationContext)
         WorkManager.initialize(this, workManagerConfiguration)
 
         // Phase 0: INFRA-06 — StrictMode for Debug (log only; penaltyDeath causes crashes

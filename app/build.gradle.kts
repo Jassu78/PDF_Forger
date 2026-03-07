@@ -43,6 +43,11 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE"
+            excludes += "META-INF/LICENSE.txt"
+            excludes += "META-INF/NOTICE"
+            excludes += "META-INF/NOTICE.txt"
         }
     }
 }
@@ -62,6 +67,7 @@ dependencies {
     implementation(project(":feature:compression"))
     implementation(project(":feature:conversion"))
 
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0") // For PDFBoxResourceLoader.init in Application
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
