@@ -1,7 +1,6 @@
-# PDF Forger - ProGuard rules for release build
+# PDF Forger - ProGuard/R8 rules for release build
 
-# Keep pdfbox-android classes and resources (glyphlist, AFM fonts)
+# Keep pdfbox-android classes (R8 does not support -keepresources)
 -keep class com.tom_roush.pdfbox.** { *; }
 -keepclassmembers class com.tom_roush.pdfbox.** { *; }
 -dontwarn com.tom_roush.pdfbox.**
--keepresources **/glyphlist*
