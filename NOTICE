@@ -1,0 +1,72 @@
+PDF Forger
+Copyright 2024 PDF Forger Contributors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+---
+
+This product includes software from the following third-party components:
+
+================================================================================
+Apache License 2.0
+================================================================================
+
+  - Apache POI (org.apache.poi:poi-ooxml)
+    https://poi.apache.org/
+    License: Apache-2.0
+
+  - PDFBox Android (com.tom-roush:pdfbox-android)
+    https://github.com/TomRoush/PdfBox-Android
+    License: Apache-2.0
+
+  - Kotlin (JetBrains)
+    https://kotlinlang.org/
+    License: Apache-2.0
+
+  - Jetpack Compose (AndroidX)
+    https://developer.android.com/jetpack/compose
+    License: Apache-2.0
+
+  - Hilt / Dagger (Google)
+    https://dagger.dev/hilt/
+    License: Apache-2.0
+
+  - MockK
+    https://mockk.io/
+    License: Apache-2.0
+
+  - Kotlinx Coroutines
+    https://github.com/Kotlin/kotlinx.coroutines
+    License: Apache-2.0
+
+  - Kotlinx Serialization
+    https://github.com/Kotlin/kotlinx.serialization
+    License: Apache-2.0
+
+  - JUnit 5 (JUnit Jupiter)
+    https://junit.org/junit5/
+    License: EPL-2.0 (compatible with Apache-2.0 for distribution)
+
+================================================================================
+GNU Affero General Public License v3.0 (AGPL-3.0)
+================================================================================
+
+  - MuPDF (com.artifex.mupdf:fitz)
+    https://mupdf.com/
+    License: AGPL-3.0
+
+    When this application is distributed with MuPDF, the MuPDF component
+    is licensed under AGPL-3.0. A copy of the GNU AGPL v3 is available at
+    https://www.gnu.org/licenses/agpl-3.0.html
+
+    Artifex Software, Inc. also offers commercial licensing for MuPDF
+    if AGPL terms are not suitable for your use case.
+
+================================================================================
+
+For the full text of the Apache License 2.0, see the LICENSE file in this
+distribution.

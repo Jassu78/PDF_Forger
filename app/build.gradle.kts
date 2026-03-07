@@ -14,8 +14,8 @@ android {
         applicationId = "dev.pdfforge"
         minSdk = 29
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = (project.findProperty("VERSION_CODE") as String?)?.toIntOrNull() ?: 1
+        versionName = project.findProperty("VERSION_NAME") as String? ?: "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -23,10 +23,23 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD") ?: "android"
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS") ?: "androiddebugkey"
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD") ?: "android"
+            }
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")?.takeIf { it.storeFile?.exists() == true }
+                ?: signingConfigs.getByName("debug")
         }
     }
     compileOptions {

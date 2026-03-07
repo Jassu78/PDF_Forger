@@ -1,0 +1,113 @@
+# Release Pipeline: Build and publish on version tag
+# Trigger: git tag v1.0.0 && git push origin v1.0.0
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  JAVA_VERSION: "17"
+
+jobs:
+  build-release:
+    name: Build Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      version_code: ${{ steps.meta.outputs.version_code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: meta
+        run: |
+          TAG=${GITHUB_REF#refs/tags/v}
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+          # Compute versionCode: 1.2.3 -> 10203 (Play Store max 2100000000)
+          IFS='.' read -r major minor patch _ <<< "${TAG}-0-0"
+          major=${major:-1}
+          minor=${minor:-0}
+          patch=${patch:-0}
+          code=$((major * 10000 + minor * 100 + patch))
+          echo "version_code=$code" >> $GITHUB_OUTPUT
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: "gradle"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Set release version
+        run: |
+          echo "VERSION_CODE=${{ steps.meta.outputs.version_code }}" >> gradle.properties
+          echo "VERSION_NAME=${{ steps.meta.outputs.version }}" >> gradle.properties
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Build Release AAB
+        run: ./gradlew bundleRelease --no-daemon --stacktrace
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-release
+    steps:
+      - name: Download AAB
+        uses: actions/download-artifact@v4
+        with:
+          name: app-release-aab
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-release-apk
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: |
+            app-release.aab
+            app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

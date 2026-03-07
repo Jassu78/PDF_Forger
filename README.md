@@ -1,26 +1,89 @@
-# PDF Forger (PdfForge)
+# PDF Forger
 
-**Standalone Android app** for PDF operations: merge, split, compress, image-to-PDF, reorder pages, and convert (e.g. to DOCX/PPTX).
+[![CI](https://github.com/Jassu78/PDF_Forger/actions/workflows/ci.yml/badge.svg)](https://github.com/Jassu78/PDF_Forger/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-This project is **not linked to** and is **separate from** any other project or app named "pdfworker" or similar. All code and background processing live in this repository only.
+**Android app** for PDF operations: merge, split, compress, image-to-PDF, DOCX-to-PDF, reorder pages, and convert formats.
 
-## Structure
+## Features
 
-- **app** — Android application entry point
-- **domain** — Models and use cases (no Android)
-- **data** — File I/O (`:data:impl`), temp storage (`:data:storage`), and **background work** (`:data:worker`). The worker that runs PDF jobs is defined and used only inside this app.
-- **engine** — PDF engine (MuPDF JNI bridge, converter)
-- **feature** — UI modules (home, merge, split, compress, convert, image-to-PDF, reorder)
+| Feature | Description |
+|---------|-------------|
+| **Merge PDFs** | Combine multiple PDFs into one |
+| **Split PDF** | Extract selected pages into a new file |
+| **Compress PDF** | Reduce file size |
+| **Image to PDF** | Convert images to PDF |
+| **Doc to PDF** | Convert Word (.docx) to PDF with formatting, tables, and images |
+| **Reorder / Rotate** | Rearrange and rotate pages |
 
-## Build and run
+## Requirements
 
-- Open in Android Studio (or use Gradle with NDK if you build native code).
-- Build and run on device or emulator. No external "pdfworker" dependency or link is required.
+- **minSdk:** 29 (Android 10)
+- **targetSdk:** 34
+- **Kotlin:** 2.1
+- **Java:** 17
 
-## Native PDF engine (optional)
+## Build
 
-PDF operations use a JNI bridge in `engine/mupdf`. For real output (not stubs), see `engine/mupdf/MUPDF_INTEGRATION.md` for linking MuPDF.
+```bash
+./gradlew assembleDebug
+# or
+./gradlew bundleRelease
+```
 
----
+### First-time setup
 
-*Project name: PDF Forger. Root Gradle project: `PDF Forger`.*
+If `gradlew` is missing:
+
+```bash
+gradle wrapper
+```
+
+## Project structure
+
+```
+app/               # Application entry point
+domain/            # Models, use cases (no Android)
+  models/          # Shared models
+  core/            # Tool interfaces, validation
+data/              # File I/O, storage, background work
+  impl/            # SAF file adapter
+  storage/         # Temp file management
+  worker/          # WorkManager jobs
+engine/            # PDF engines
+  mupdf/           # MuPDF JNI (merge, split, compress, image-to-PDF)
+  converter/       # DOCX→PDF (POI + WebView)
+common/            # UI components, utilities
+feature/           # Feature modules (home, merge, split, etc.)
+```
+
+## Release
+
+Create a version tag and push:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions will build the release and publish AAB/APK to [Releases](https://github.com/Jassu78/PDF_Forger/releases).
+
+## CI / CD
+
+| Workflow | Trigger | Actions |
+|----------|---------|---------|
+| **CI** | Push, PR | Lint, test, build debug APK |
+| **Release** | Tag `v*` | Build AAB/APK, create GitHub Release |
+| **Pages** | Push to main | Deploy project page |
+
+See [.github/README.md](.github/README.md) for details.
+
+## Native engine (MuPDF)
+
+PDF operations use **MuPDF** (Artifex) from Maven. No NDK or native build required. See [engine/mupdf/MUPDF_INTEGRATION.md](engine/mupdf/MUPDF_INTEGRATION.md).
+
+## License
+
+This project is licensed under the **Apache License 2.0**. See [LICENSE](LICENSE).
+
+Third-party components and their licenses are listed in [NOTICE](NOTICE). MuPDF (AGPL v3) is used under its own terms.
